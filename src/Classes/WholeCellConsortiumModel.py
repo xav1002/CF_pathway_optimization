@@ -1,5 +1,7 @@
+import MetabolicPathwayNetworkGraph
+import MicrobialConsortiumKineticModel
+
 class WholeCellConsortiumModel:
-    test = 1
 
     def __init__(self):
         self.test = 2
