@@ -19,10 +19,10 @@ class Reaction:
         self.equation = equation
         self.enzyme_id = enzyme_id
 
-    @setattr
-    def set_Enzyme(self,) -> None:
+    # @setattr
+    def set_Enzyme(self) -> None:
         self.enzyme = Enzyme()
 
-    @getattr
+    # @getattr
     def get_Enzyme_ID(self) -> str:
         return self.enzyme_id

@@ -11,7 +11,7 @@ from Metabolite import Metabolite
 from Reaction import Reaction
 
 
-def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite:
+def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite | Reaction | Enzyme:
     query_items_all = ''
     if type(query_items) == str:
         query_items_all = query_items
