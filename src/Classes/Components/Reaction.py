@@ -26,3 +26,6 @@ class Reaction:
     # @getattr
     def get_Enzyme_ID(self) -> str:
         return self.enzyme_id
+
+    def parse_equation(self) -> dict:
+        return {reactants:[],products:[]}
