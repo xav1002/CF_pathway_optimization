@@ -1,6 +1,11 @@
 import MetabolicPathwayNetworkGraph
 import MicrobialConsortiumKineticModel
 
+import sys
+sys.path.append('../Classes/Scripts')
+
+from parse_KEGG_query import parse_KEGG
+
 class WholeCellConsortiumModel:
 
     def __init__(self):
@@ -13,8 +18,10 @@ class WholeCellConsortiumModel:
     def seek_pathways(self):
         return
 
-    def seek_products(self):
+    def seek_products(self,root_metabolite_entry:str) -> None:
+        root_metabolite = parse_KEGG(root_metabolite_entry,'get')
         seek_prod_graph = MetabolicPathwayNetworkGraph()
+
 
     def seek_substrates(self):
         return
