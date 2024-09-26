@@ -7,12 +7,12 @@ import re
 import functools
 from io import StringIO
 
-from Metabolite import Metabolite
-from Reaction import Reaction
-from Enzyme import Enzyme
+from MPNG_Metabolite import MPNG_Metabolite
+from MPNG_Reaction import MPNG_Reaction
+from MPNG_Enzyme import MPNG_Enzyme
 
 
-def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite | Reaction | Enzyme:
+def parse_KEGG(query_items:tuple|str,req_type:str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_Enzyme:
     query_items_all = ''
     if type(query_items) == str:
         query_items_all = query_items
@@ -61,8 +61,8 @@ def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite | Reaction | En
                         category = "MOL_WEIGHT"
                     elif line_level_1.startswith("EXACT_MASS"):
                         category = "EXACT_MASS"
-                    elif line_level_1.startswith("REACTION"):
-                        category = "REACTION"
+                    elif line_level_1.startswith("MPNG_Reaction"):
+                        category = "MPNG_Reaction"
                     elif line_level_1.startswith("PATHWAY"):
                         category = ""
 
@@ -75,13 +75,13 @@ def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite | Reaction | En
                             formula = line_level_1.replace("FORMULA","").strip()
                         elif category == "MOL_WEIGHT":
                             MW = float(line_level_1.replace("MOL_WEIGHT","").strip())
-                        elif category == "REACTION":
+                        elif category == "MPNG_Reaction":
                             print(line_level_1)
-                            print(list(map(lambda x: x.strip(),re.split(' ',line_level_1.replace("REACTION","")))))
-                            rxn_names = rxn_names+list(filter(lambda x: x!='',list(map(lambda x: x.strip(),re.split(' ',line_level_1.replace("REACTION",""))))))
-                metabolites.append(Metabolite(entry,names,formula,MW,rxn_names))
+                            print(list(map(lambda x: x.strip(),re.split(' ',line_level_1.replace("MPNG_Reaction","")))))
+                            rxn_names = rxn_names+list(filter(lambda x: x!='',list(map(lambda x: x.strip(),re.split(' ',line_level_1.replace("MPNG_Reaction",""))))))
+                metabolites.append(MPNG_Metabolite(entry,names,formula,MW,rxn_names))
 
-            # Reaction
+            # MPNG_Reaction
             case 'R':
                 names: list = []
 
@@ -98,25 +98,25 @@ def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite | Reaction | En
                         category = "EQUATION"
                     elif line_level_1.startswith("RCLASS"):
                         category = "RCLASS"
-                    elif line_level_1.startswith("ENZYME"):
-                        category = "ENZYME"
+                    elif line_level_1.startswith("MPNG_Enzyme"):
+                        category = "MPNG_Enzyme"
                     elif line_level_1.startswith("PATHWAY"):
                         category = ""
 
                     if not line_level_1.startswith("/"):
                         if category == "ENTRY":
-                            entry = line_level_1.replace("ENTRY","").replace("Reaction","").strip()
+                            entry = line_level_1.replace("ENTRY","").replace("MPNG_Reaction","").strip()
                         elif category == "NAME":
                             names = names+list(filter(lambda x: x!='',list(map(lambda x: x.strip(),re.split(';',line_level_1.replace("NAME",""))))))
                         elif category == "DEFINITION":
                             definition = line_level_1.replace("DEFINITION","").strip()
                         elif line_level_1.startswith("EQUATION"):
                             equation = line_level_1.replace("EQUATION","").strip()
-                        elif line_level_1.startswith("ENZYME"):
-                            enzyme_id = line_level_1.replace("ENZYME","").strip()
-                reactions.append(Reaction(entry,names,definition,equation,enzyme_id))
+                        elif line_level_1.startswith("MPNG_Enzyme"):
+                            enzyme_id = line_level_1.replace("MPNG_Enzyme","").strip()
+                reactions.append(MPNG_Reaction(entry,names,definition,equation,MPNG_Enzyme_id))
 
-            # Enzyme
+            # MPNG_Enzyme
             case 'E':
                 names: list = []
                 substrates: list = []
@@ -133,8 +133,8 @@ def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite | Reaction | En
                         category = "CLASS"
                     elif line_level_1.startswith("SYSNAME"):
                         category = "SYSNAME"
-                    elif line_level_1.startswith("REACTION"):
-                        category = "REACTION"
+                    elif line_level_1.startswith("MPNG_Reaction"):
+                        category = "MPNG_Reaction"
                     elif line_level_1.startswith("SUBSTRATE"):
                         category = "SUBSTRATE"
                     elif line_level_1.startswith("PRODUCT"):
@@ -145,7 +145,7 @@ def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite | Reaction | En
 
                     if not line_level_1.startswith("/"):
                         if category == "ENTRY":
-                            entry = line_level_1.replace("ENTRY","").replace("Enzyme","").replace("EC ","").strip()
+                            entry = line_level_1.replace("ENTRY","").replace("MPNG_Enzyme","").replace("EC ","").strip()
                         elif category == "NAME":
                             names = list(map(lambda x: x.strip(),re.split(';',line_level_1.replace("NAME",""))))
                         elif category == "SYSNAME":
@@ -154,22 +154,11 @@ def parse_KEGG(query_items:tuple|str,req_type:str) -> Metabolite | Reaction | En
                             substrates = substrates+list(filter(lambda x: x!='',re.split(';',line_level_1.replace("SUBSTRATE","").strip())))
                         elif category == "PRODUCT":
                             products = products+list(filter(lambda x: x!='',re.split(';',line_level_1.replace("PRODUCT","").strip())))                
-                enzymes.append(Enzyme(entry,names,sysname,substrates,products))
+                enzymes.append(MPNG_Enzyme(entry,names,sysname,substrates,products))
             case 'Glycan':
                 test = 1
 
-    # if len(reactions) > 0:
-    #     enzyme_req_str = ''
-    #     for x in reactions:
-    #         if len(enzyme_req_str) == 0: operator = ''
-    #         else: operator = '+'
-    #         enzyme_req_str = enzyme_req_str+operator+x.get_Enzyme_ID()
-
-        # KEGG_link = 'https://rest.kegg.jp/'+req_type+'/'+enzyme_req_str
-        # req_raw = requests.get(KEGG_link)
-        # req_2 = list(filter(lambda x: x!='' and x!='\n',re.split(r'///',req_raw.text)))
-
-    attrs = vars(enzymes[0])
-    print(', '.join("%s: %s" % item for item in attrs.items()))
+    # attrs = vars(enzymes[0])
+    # print(', '.join("%s: %s" % item for item in attrs.items()))
 
     return (metabolites,reactions,enzymes)

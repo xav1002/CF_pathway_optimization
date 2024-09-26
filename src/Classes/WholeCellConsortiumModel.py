@@ -14,7 +14,7 @@ class WholeCellConsortiumModel:
         return
 
     def seek_products(self):
-        return
+        seek_prod_graph = MetabolicPathwayNetworkGraph()
 
     def seek_substrates(self):
         return
