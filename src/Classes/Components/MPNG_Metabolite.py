@@ -8,13 +8,27 @@ class MPNG_Metabolite:
     # MW
     # reactions
 
-    def __init__(self,entry,names,formula,MW,reactions):
-        self.entry = entry
-        self.names = names
-        self.formula = formula
-        self.MW = MW
-        self.reactions = reactions
+    def __init__(self,entry:str,names:list[str],formula:str,MW:float,reactions:list[str]):
+        self._entry = entry
+        self._names = names
+        self._formula = formula
+        self._MW = MW
+        self._reactions = reactions
 
-    @property.getter
-    def get_entry(self) -> str:
-        return self.entry
+    @property
+    def conc(self) -> float:
+        return self._conc
+
+    @conc.setter
+    def conc(self,conc:float) -> None:
+        if conc < 0:
+            raise ValueError('Metabolite concentration must be greater than 0')
+        self._conc = conc
+
+    @property
+    def entry(self) -> str:
+        return self._entry
+
+    @entry.setter
+    def entry(self,entry:str) -> None:
+        self._entry = entry

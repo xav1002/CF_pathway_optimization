@@ -3,8 +3,13 @@ import MicrobialConsortiumKineticModel
 
 import sys
 sys.path.append('../Classes/Scripts')
+sys.path.append('../Classes/Components')
 
 from parse_KEGG_query import parse_KEGG
+
+from MPNG_Metabolite import MPNG_Metabolite
+from MPNG_Reaction import MPNG_Reaction
+from MPNG_Enzyme import MPNG_Enzyme
 
 class WholeCellConsortiumModel:
 
@@ -12,8 +17,17 @@ class WholeCellConsortiumModel:
         # self.MPNG = MetabolicPathwayNetworkGraph()
         return
 
-    def __getattribute__test(self):
-        return self.test
+    @property
+    def metabolites(self) -> list[MPNG_Metabolite]:
+        return self.metabolites
+
+    @property
+    def reactions(self) -> list[MPNG_Reaction]:
+        return self.reactions
+
+    @property
+    def enzymes(self) -> list[MPNG_Enzyme]:
+        return self.enzymes
 
     def seek_pathways(self):
         return

@@ -1,6 +1,7 @@
 from periodictable import *
 
-import Enzyme
+import MPNG_Metabolite
+import MPNG_Enzyme
 
 class MPNG_Reaction:
 
@@ -8,6 +9,7 @@ class MPNG_Reaction:
     # names
     # definition
     # equation
+    # metabolites
     # enzyme_id
 
     # Enzyme
@@ -19,6 +21,16 @@ class MPNG_Reaction:
         self.equation = equation
         self.enzyme_id = enzyme_id
 
+        self.metabolites = self.parse_equation()
+
+    @property
+    def metabolites(self) -> list[MPNG_Metabolite]:
+        return self.__metabolites
+
+    @metabolites.setter
+    def metabolites(self,stoich_list:dict):
+        self.__metabolites = stoich_list
+
     # @setattr
     def set_Enzyme(self) -> None:
         self.enzyme = Enzyme()
@@ -28,4 +40,5 @@ class MPNG_Reaction:
         return self.enzyme_id
 
     def parse_equation(self) -> dict:
-        return {reactants:[],products:[]}
+        
+        return {}
