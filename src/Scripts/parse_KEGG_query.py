@@ -39,7 +39,6 @@ def parse_KEGG(query_items:tuple|str,req_type:str) -> MPNG_Metabolite | MPNG_Rea
     enzymes: list = []
     for idx,x in enumerate(req_2):
         req_3 = StringIO(x)
-        print(x)
         category = ""
 
         match query_type:

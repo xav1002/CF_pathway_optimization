@@ -22,10 +22,10 @@ class MetabolicPathwayNetworkGraph:
         self.temperature = 303.15 # K
         self.pH = 7
         self.E_carriers = {
-            ATP: 0, ADP: 0,
-            NADH: 0, NAD: 0,
-            NADPH: 0, NADP: 0,
-            FADH2: 0, FAD: 0
+            'ATP': 0, 'ADP': 0,
+            'NADH': 0, 'NAD': 0,
+            'NADPH': 0, 'NADP': 0,
+            'FADH2': 0, 'FAD': 0
         }
 
     @property
@@ -92,5 +92,5 @@ class MetabolicPathwayNetworkGraph:
         self.__update_COBRA_model(new_reaction)
 
     def flip_stoichiometry(self) -> None:
-        # purpose is to flip the stoichiometry when a tree with root at end product needs to be integrated with tree with root at initial substrate
+        # flip the stoichiometry when a tree with root at end product needs to be integrated with tree with root at initial substrate
         return

@@ -1,3 +1,6 @@
 {
-    "editor.fontLigatures": false
+    "editor.fontLigatures": false,
+    "python.analysis.extraPaths": [
+        "./src/Classes/Components"
+    ]
 }
