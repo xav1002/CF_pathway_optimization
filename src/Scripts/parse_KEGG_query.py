@@ -1,29 +1,24 @@
-import sys
-sys.path.append('../Classes/Components')
-
 import requests
 import re
-import functools
 from io import StringIO
 
 from MPNG_Metabolite import MPNG_Metabolite
 from MPNG_Reaction import MPNG_Reaction
 from MPNG_Enzyme import MPNG_Enzyme
 
-
-def parse_KEGG(query_items:tuple|str,req_type:str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_Enzyme:
-    query_items_all = ''
+def parse_KEGG(query_items:list|str,req_type:str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_Enzyme:
     if type(query_items) == str:
         query_items_all = query_items
         if query_items[0] == 'C' or query_items[0] == 'R':
             query_type = query_items[0]
         else:
             query_type = 'E'
-    elif type(query_items) == tuple:
+    elif type(query_items) == list:
         query_type = []
+        query_items_all = str(query_items.pop(0))
         for x in query_items:
             if x[0] == 'C' or x[0] == 'R':
-                query_items_all = query_items_all+x
+                query_items_all = query_items_all+'+'+x
                 query_type.append(x[0])
             else:
                 query_type = 'E'

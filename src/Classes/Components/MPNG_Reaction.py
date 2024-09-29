@@ -1,8 +1,8 @@
 from periodictable import *
 import re
 
-import MPNG_Metabolite
-import MPNG_Enzyme
+from MPNG_Metabolite import MPNG_Metabolite
+from MPNG_Enzyme import MPNG_Enzyme
 
 class MPNG_Reaction:
 
@@ -22,19 +22,27 @@ class MPNG_Reaction:
         self.equation = equation
         self.enzyme_id = enzyme_id
 
-        self.__metabolites = self.parse_equation()
+        self.__stoich = self.parse_equation()
 
     @property
     def metabolites(self) -> list[MPNG_Metabolite]:
         return self.__metabolites
 
     @metabolites.setter
-    def metabolites(self,stoich_list:dict):
-        self.__metabolites = stoich_list
+    def metabolites(self,metabolites:list[MPNG_Metabolite]):
+        self.__metabolites = metabolites
+
+    @property
+    def stoich(self) -> dict:
+        return self.__stoich
+    
+    @stoich.setter
+    def stoich(self,new_stoich:dict) -> None:
+        self.__stoich = new_stoich
 
     # @setattr
     def set_Enzyme(self) -> None:
-        self.enzyme = Enzyme()
+        self.enzyme = MPNG_Enzyme()
 
     # @getattr
     def get_Enzyme_ID(self) -> str:
@@ -45,17 +53,17 @@ class MPNG_Reaction:
         subs_wth_stoich = re.split(' \\+ ',sub_str)
         prod_wth_stoich = re.split(' \\+ ',prod_str)
 
-        metabolites = {}
+        new_stoich = {}
 
         for sub in subs_wth_stoich:
             stoich = re.split(' ',sub.strip())
             if len(stoich) == 1:
                 name = stoich[0]
                 num = 1
-            elif len(res) == 2:
+            elif len(stoich) == 2:
                 name = stoich[0]
                 num = stoich[1]
-            metabolites[str(name)] = -int(num)
+            new_stoich[str(name)] = -int(num)
         for prod in prod_wth_stoich:
             stoich = re.split(' ',prod.strip())
             if len(stoich) == 1:
@@ -64,6 +72,6 @@ class MPNG_Reaction:
             elif len(stoich) == 2:
                 name = stoich[0]
                 num = stoich[1]
-            metabolites[str(name)] = int(num)
+            new_stoich[str(name)] = int(num)
 
-        return metabolites
+        return new_stoich
