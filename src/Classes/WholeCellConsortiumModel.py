@@ -1,3 +1,8 @@
+import sys
+sys.path.append('../../Lib')
+from pyvis.network import Network
+import networkx as nx
+
 from MetabolicPathwayNetworkGraph import MetabolicPathwayNetworkGraph
 from MicrobialConsortiumKineticModel import MicrobialConsortiumKineticModel
 
@@ -33,7 +38,7 @@ class WholeCellConsortiumModel:
 
     def __seek_products(self,root_metabolite_entries:list[str],max_lvls:int) -> None:
         # Task 1: construct metabolic network connections
-        root_metabolites = parse_KEGG(root_metabolite_entries,'get')
+        root_metabolites = parse_KEGG(root_metabolite_entries)
         self.__seek_prod_graphs: list[MetabolicPathwayNetworkGraph] = []
         for root in root_metabolites:
             self.__seek_prod_graphs.append(MetabolicPathwayNetworkGraph('product_seeking_graph_root_'+root.names[0],root))
@@ -58,7 +63,7 @@ class WholeCellConsortiumModel:
 
     def __seek_substrates(self,root_metabolite_entries:list[str]) -> None:
         # Task 1: construct metabolic network connections
-        root_metabolites = parse_KEGG(root_metabolite_entries,'get')
+        root_metabolites = parse_KEGG(root_metabolite_entries)
         seek_sub_graph = MetabolicPathwayNetworkGraph()
 
         # Task 2: implement thermodynamic feasibility constraints
@@ -69,14 +74,36 @@ class WholeCellConsortiumModel:
 
         # Task 4: visualize results
 
+    def grow_graph_test(self) -> None:
+        [root,[],[]] = parse_KEGG(['C00058'])
+
+        graph = MetabolicPathwayNetworkGraph('test_graph_root_'+root[0].names[0],root)
+
+        lvl_ct = 0
+        max_lvls = 2
+        while lvl_ct < max_lvls:
+            # grow graph
+            graph = self.__grow_graph(graph)
+            # check for overlap with other graphs
+            lvl_ct += 1
+            print("Level "+str(lvl_ct)+" completed.")
+
+        return graph.NX_Graph
+
+        # net = Network(notebook=False,cdn_resources="remote",width="100%",height="600px")
+        # net.from_nx(graph.NX_Graph)
+        # return net
+
     def __grow_graph(self,graph:MetabolicPathwayNetworkGraph) -> MetabolicPathwayNetworkGraph:
         for leaf in graph.leaf_metabolites:
             # query all reactions for given leaf metabolite
-            rxns: list[MPNG_Reaction] = parse_KEGG(leaf._reactions,'get')
+            print(leaf.reactions)
+            [[],rxns,[]] = parse_KEGG(leaf.reactions)
 
             for rxn in rxns:
                 # instantiating new MPNG_Metabolites based on list in MPNG_Reaction
-                metabolites: list[MPNG_Metabolite] = parse_KEGG(list(rxn.metabolites.keys()),'get')
+                metabolite_names: list[str] = list(map(lambda x: x.id,list(rxn.stoich.keys())))
+                [metabolites,[],[]] = parse_KEGG(metabolite_names)
                 # adding new reactions to graph
                 graph.add_reaction(rxn,metabolites)
 

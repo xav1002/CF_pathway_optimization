@@ -6,7 +6,7 @@ from MPNG_Metabolite import MPNG_Metabolite
 from MPNG_Reaction import MPNG_Reaction
 from MPNG_Enzyme import MPNG_Enzyme
 
-def parse_KEGG(query_items:list|str,req_type:str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_Enzyme:
+def parse_KEGG(query_items:list|str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_Enzyme:
     if type(query_items) == str:
         query_items_all = query_items
         if query_items[0] == 'C' or query_items[0] == 'R':
@@ -14,25 +14,28 @@ def parse_KEGG(query_items:list|str,req_type:str) -> MPNG_Metabolite | MPNG_Reac
         else:
             query_type = 'E'
     elif type(query_items) == list:
-        query_type = []
         query_items_all = str(query_items.pop(0))
+        query_type = query_items_all[0]
         for x in query_items:
             if x[0] == 'C' or x[0] == 'R':
                 query_items_all = query_items_all+'+'+x
-                query_type.append(x[0])
             else:
                 query_type = 'E'
 
-    KEGG_link = 'https://rest.kegg.jp/'+req_type+'/'+query_items_all
+    KEGG_link = 'https://rest.kegg.jp/get/'+query_items_all
 
     print(KEGG_link)
-    req_raw = requests.get(KEGG_link)
+    try:
+        req_raw = requests.get(KEGG_link)
+    except Exception as e:
+        print('KEGG request error:',e)
     req_2 = list(filter(lambda x: x!='' and x!='\n',re.split(r'///',req_raw.text)))
 
     metabolites: list = []
     reactions: list = []
     enzymes: list = []
-    for idx,x in enumerate(req_2):
+
+    for x in req_2:
         req_3 = StringIO(x)
         category = ""
 
@@ -41,6 +44,7 @@ def parse_KEGG(query_items:list|str,req_type:str) -> MPNG_Metabolite | MPNG_Reac
             case 'C':
                 names: list = []
                 rxn_names: list = []
+                MW = 0.0
                 for line_level_1 in req_3:
                     line_level_1 = line_level_1.strip()
 
@@ -52,10 +56,16 @@ def parse_KEGG(query_items:list|str,req_type:str) -> MPNG_Metabolite | MPNG_Reac
                         category = "FORMULA"
                     elif line_level_1.startswith("MOL_WEIGHT"):
                         category = "MOL_WEIGHT"
+                    elif line_level_1.startswith("REMARK"):
+                        category = ""
+                    elif line_level_1.startswith("COMMENT"):
+                        category = ""
                     elif line_level_1.startswith("EXACT_MASS"):
                         category = "EXACT_MASS"
                     elif line_level_1.startswith("REACTION"):
                         category = "REACTION"
+                    elif line_level_1.startswith("ENZYME"):
+                        category = ""
                     elif line_level_1.startswith("PATHWAY"):
                         category = ""
 
@@ -75,6 +85,7 @@ def parse_KEGG(query_items:list|str,req_type:str) -> MPNG_Metabolite | MPNG_Reac
             # MPNG_Reaction
             case 'R':
                 names: list = []
+                enzyme_id = ""
 
                 for line_level_1 in req_3:
                     line_level_1 = line_level_1.strip()
@@ -97,6 +108,7 @@ def parse_KEGG(query_items:list|str,req_type:str) -> MPNG_Metabolite | MPNG_Reac
                     if not line_level_1.startswith("/"):
                         if category == "ENTRY":
                             entry = line_level_1.replace("ENTRY","").replace("Reaction","").strip()
+                            print(entry)
                         elif category == "NAME":
                             names = names+list(filter(lambda x: x!='',list(map(lambda x: x.strip(),re.split(';',line_level_1.replace("NAME",""))))))
                         elif category == "DEFINITION":

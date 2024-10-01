@@ -1,0 +1,155 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#97c2fc", "id": "C00058", "image": "https://rest.kegg.jp/get/C00058/image", "label": "C00058", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00011", "image": "https://rest.kegg.jp/get/C00011/image", "label": "C00011", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00005", "image": "https://rest.kegg.jp/get/C00005/image", "label": "C00005", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00080", "image": "https://rest.kegg.jp/get/C00080/image", "label": "C00080", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C01326", "image": "https://rest.kegg.jp/get/C01326/image", "label": "C01326", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00001", "image": "https://rest.kegg.jp/get/C00001/image", "label": "C00001", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00010", "image": "https://rest.kegg.jp/get/C00010/image", "label": "C00010", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00022", "image": "https://rest.kegg.jp/get/C00022/image", "label": "C00022", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00044", "image": "https://rest.kegg.jp/get/C00044/image", "label": "C00044", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00008", "image": "https://rest.kegg.jp/get/C00008/image", "label": "C00008", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C02405", "image": "https://rest.kegg.jp/get/C02405/image", "label": "C02405", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00004", "image": "https://rest.kegg.jp/get/C00004/image", "label": "C00004", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00798", "image": "https://rest.kegg.jp/get/C00798/image", "label": "C00798", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00209", "image": "https://rest.kegg.jp/get/C00209/image", "label": "C00209", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00488", "image": "https://rest.kegg.jp/get/C00488/image", "label": "C00488", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C15563", "image": "https://rest.kegg.jp/get/C15563/image", "label": "C15563", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00006", "image": "https://rest.kegg.jp/get/C00006/image", "label": "C00006", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C04178", "image": "https://rest.kegg.jp/get/C04178/image", "label": "C04178", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00007", "image": "https://rest.kegg.jp/get/C00007/image", "label": "C00007", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C01304", "image": "https://rest.kegg.jp/get/C01304/image", "label": "C01304", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00003", "image": "https://rest.kegg.jp/get/C00003/image", "label": "C00003", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00037", "image": "https://rest.kegg.jp/get/C00037/image", "label": "C00037", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00028", "image": "https://rest.kegg.jp/get/C00028/image", "label": "C00028", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00313", "image": "https://rest.kegg.jp/get/C00313/image", "label": "C00313", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00139", "image": "https://rest.kegg.jp/get/C00139/image", "label": "C00139", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C16248", "image": "https://rest.kegg.jp/get/C16248/image", "label": "C16248", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C18910", "image": "https://rest.kegg.jp/get/C18910/image", "label": "C18910", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00014", "image": "https://rest.kegg.jp/get/C00014/image", "label": "C00014", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C05714", "image": "https://rest.kegg.jp/get/C05714/image", "label": "C05714", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C02659", "image": "https://rest.kegg.jp/get/C02659/image", "label": "C02659", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C05715", "image": "https://rest.kegg.jp/get/C05715/image", "label": "C05715", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00561", "image": "https://rest.kegg.jp/get/C00561/image", "label": "C00561", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C03742", "image": "https://rest.kegg.jp/get/C03742/image", "label": "C03742", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00283", "image": "https://rest.kegg.jp/get/C00283/image", "label": "C00283", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C02512", "image": "https://rest.kegg.jp/get/C02512/image", "label": "C02512", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C04895", "image": "https://rest.kegg.jp/get/C04895/image", "label": "C04895", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00009", "image": "https://rest.kegg.jp/get/C00009/image", "label": "C00009", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00084", "image": "https://rest.kegg.jp/get/C00084/image", "label": "C00084", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00232", "image": "https://rest.kegg.jp/get/C00232/image", "label": "C00232", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00035", "image": "https://rest.kegg.jp/get/C00035/image", "label": "C00035", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00144", "image": "https://rest.kegg.jp/get/C00144/image", "label": "C00144", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00013", "image": "https://rest.kegg.jp/get/C00013/image", "label": "C00013", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C05922", "image": "https://rest.kegg.jp/get/C05922/image", "label": "C05922", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C04874", "image": "https://rest.kegg.jp/get/C04874/image", "label": "C04874", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C05925", "image": "https://rest.kegg.jp/get/C05925/image", "label": "C05925", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C06148", "image": "https://rest.kegg.jp/get/C06148/image", "label": "C06148", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C20239", "image": "https://rest.kegg.jp/get/C20239/image", "label": "C20239", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00536", "image": "https://rest.kegg.jp/get/C00536/image", "label": "C00536", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C01268", "image": "https://rest.kegg.jp/get/C01268/image", "label": "C01268", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00033", "image": "https://rest.kegg.jp/get/C00033/image", "label": "C00033", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00027", "image": "https://rest.kegg.jp/get/C00027/image", "label": "C00027", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C01620", "image": "https://rest.kegg.jp/get/C01620/image", "label": "C01620", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C01327", "image": "https://rest.kegg.jp/get/C01327/image", "label": "C01327", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00025", "image": "https://rest.kegg.jp/get/C00025/image", "label": "C00025", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00024", "image": "https://rest.kegg.jp/get/C00024/image", "label": "C00024", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00040", "image": "https://rest.kegg.jp/get/C00040/image", "label": "C00040", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00020", "image": "https://rest.kegg.jp/get/C00020/image", "label": "C00020", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00074", "image": "https://rest.kegg.jp/get/C00074/image", "label": "C00074", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C01261", "image": "https://rest.kegg.jp/get/C01261/image", "label": "C01261", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00002", "image": "https://rest.kegg.jp/get/C00002/image", "label": "C00002", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C04494", "image": "https://rest.kegg.jp/get/C04494/image", "label": "C04494", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C03684", "image": "https://rest.kegg.jp/get/C03684/image", "label": "C03684", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C21094", "image": "https://rest.kegg.jp/get/C21094/image", "label": "C21094", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C01300", "image": "https://rest.kegg.jp/get/C01300/image", "label": "C01300", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C21615", "image": "https://rest.kegg.jp/get/C21615/image", "label": "C21615", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00060", "image": "https://rest.kegg.jp/get/C00060/image", "label": "C00060", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C22401", "image": "https://rest.kegg.jp/get/C22401/image", "label": "C22401", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C22405", "image": "https://rest.kegg.jp/get/C22405/image", "label": "C22405", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00036", "image": "https://rest.kegg.jp/get/C00036/image", "label": "C00036", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00048", "image": "https://rest.kegg.jp/get/C00048/image", "label": "C00048", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00072", "image": "https://rest.kegg.jp/get/C00072/image", "label": "C00072", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00042", "image": "https://rest.kegg.jp/get/C00042/image", "label": "C00042", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C11150", "image": "https://rest.kegg.jp/get/C11150/image", "label": "C11150", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00138", "image": "https://rest.kegg.jp/get/C00138/image", "label": "C00138", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00439", "image": "https://rest.kegg.jp/get/C00439/image", "label": "C00439", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00207", "image": "https://rest.kegg.jp/get/C00207/image", "label": "C00207", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00261", "image": "https://rest.kegg.jp/get/C00261/image", "label": "C00261", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00633", "image": "https://rest.kegg.jp/get/C00633/image", "label": "C00633", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00097", "image": "https://rest.kegg.jp/get/C00097/image", "label": "C00097", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00030", "image": "https://rest.kegg.jp/get/C00030/image", "label": "C00030", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C00091", "image": "https://rest.kegg.jp/get/C00091/image", "label": "C00091", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C22402", "image": "https://rest.kegg.jp/get/C22402/image", "label": "C22402", "shape": "image", "size": 20}, {"color": "#97c2fc", "id": "C22406", "image": "https://rest.kegg.jp/get/C22406/image", "label": "C22406", "shape": "image", "size": 20}]);
+                  edges = new vis.DataSet([{"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00011", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00005", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00080", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C01326", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00001", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00010", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00022", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00044", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00008", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C02405", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00004", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00798", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00209", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C00488", "width": 1}, {"f_stoich": -1, "from": "C00058", "r_stoich": 1, "to": "C15563", "width": 1}, {"f_stoich": -1, "from": "C00006", "r_stoich": 1, "to": "C00011", "width": 1}, {"f_stoich": -1, "from": "C00006", "r_stoich": 1, "to": "C00005", "width": 1}, {"f_stoich": -1, "from": "C00006", "r_stoich": 1, "to": "C00080", "width": 1}, {"f_stoich": -1, "from": "C00006", "r_stoich": 2, "to": "C04178", "width": 1}, {"f_stoich": -1, "from": "C00006", "r_stoich": 2, "to": "C00007", "width": 1}, {"f_stoich": -1, "from": "C00006", "r_stoich": 1, "to": "C01304", "width": 1}, {"f_stoich": -1, "from": "C00011", "r_stoich": 1, "to": "C00003", "width": 1}, {"f_stoich": -1, "from": "C00011", "r_stoich": 2, "to": "C00209", "width": 1}, {"f_stoich": -1, "from": "C00011", "r_stoich": 1, "to": "C00037", "width": 1}, {"f_stoich": -2, "from": "C00011", "r_stoich": 1, "to": "C00028", "width": 1}, {"f_stoich": -1, "from": "C00011", "r_stoich": 1, "to": "C00313", "width": 1}, {"f_stoich": -1, "from": "C00011", "r_stoich": 2, "to": "C00007", "width": 1}, {"f_stoich": -2, "from": "C00011", "r_stoich": 2, "to": "C00139", "width": 1}, {"f_stoich": -2, "from": "C00005", "r_stoich": 1, "to": "C16248", "width": 1}, {"f_stoich": -2, "from": "C00005", "r_stoich": 1, "to": "C01326", "width": 1}, {"f_stoich": -2, "from": "C00005", "r_stoich": 1, "to": "C00001", "width": 1}, {"f_stoich": -1, "from": "C00005", "r_stoich": 1, "to": "C18910", "width": 1}, {"f_stoich": -1, "from": "C00080", "r_stoich": 1, "to": "C00003", "width": 1}, {"f_stoich": -2, "from": "C00080", "r_stoich": 1, "to": "C16248", "width": 1}, {"f_stoich": -2, "from": "C00080", "r_stoich": 1, "to": "C01326", "width": 1}, {"f_stoich": -2, "from": "C00080", "r_stoich": 1, "to": "C00001", "width": 1}, {"f_stoich": -1, "from": "C00080", "r_stoich": 1, "to": "C18910", "width": 1}, {"f_stoich": -1, "from": "C00080", "r_stoich": 2, "to": "C00209", "width": 1}, {"f_stoich": -2, "from": "C00080", "r_stoich": 2, "to": "C00139", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C00014", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C00488", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C05714", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C00001", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C02659", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C05715", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C00561", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C03742", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C00283", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C02512", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C00037", "width": 1}, {"f_stoich": -2, "from": "C01326", "r_stoich": 1, "to": "C00028", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C04178", "width": 1}, {"f_stoich": -1, "from": "C01326", "r_stoich": 1, "to": "C00007", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00014", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C04895", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C01304", "width": 1}, {"f_stoich": -4, "from": "C00001", "r_stoich": 2, "to": "C00009", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00010", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00488", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00084", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00232", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C04178", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00007", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00035", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00144", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00013", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C05922", "width": 1}, {"f_stoich": -3, "from": "C00001", "r_stoich": 1, "to": "C04874", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C05925", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C06148", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C20239", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00536", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C01268", "width": 1}, {"f_stoich": -2, "from": "C00001", "r_stoich": 1, "to": "C00209", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00033", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00027", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C01620", "width": 1}, {"f_stoich": -2, "from": "C00001", "r_stoich": 3, "to": "C01327", "width": 1}, {"f_stoich": -1, "from": "C00001", "r_stoich": 1, "to": "C00025", "width": 1}, {"f_stoich": -1, "from": "C00014", "r_stoich": 1, "to": "C00488", "width": 1}, {"f_stoich": -1, "from": "C00014", "r_stoich": 1, "to": "C05714", "width": 1}, {"f_stoich": -1, "from": "C00014", "r_stoich": 1, "to": "C05715", "width": 1}, {"f_stoich": -1, "from": "C00014", "r_stoich": 1, "to": "C01304", "width": 1}, {"f_stoich": -1, "from": "C00024", "r_stoich": 1, "to": "C00010", "width": 1}, {"f_stoich": -1, "from": "C00024", "r_stoich": 1, "to": "C00022", "width": 1}, {"f_stoich": -1, "from": "C00010", "r_stoich": 1, "to": "C00798", "width": 1}, {"f_stoich": -1, "from": "C00010", "r_stoich": 1, "to": "C00035", "width": 1}, {"f_stoich": -1, "from": "C00010", "r_stoich": 1, "to": "C00009", "width": 1}, {"f_stoich": -1, "from": "C00010", "r_stoich": 1, "to": "C00040", "width": 1}, {"f_stoich": -1, "from": "C00010", "r_stoich": 1, "to": "C00020", "width": 1}, {"f_stoich": -1, "from": "C00010", "r_stoich": 1, "to": "C00013", "width": 1}, {"f_stoich": -1, "from": "C00010", "r_stoich": 1, "to": "C00313", "width": 1}, {"f_stoich": -1, "from": "C00022", "r_stoich": 1, "to": "C00035", "width": 1}, {"f_stoich": -1, "from": "C00022", "r_stoich": 1, "to": "C00074", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C04895", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C01304", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 2, "to": "C00009", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C00013", "width": 1}, {"f_stoich": -2, "from": "C00044", "r_stoich": 1, "to": "C01261", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C00002", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C00035", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C00040", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C00144", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C05922", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C00020", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C04494", "width": 1}, {"f_stoich": -1, "from": "C00044", "r_stoich": 1, "to": "C00074", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C03684", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C00536", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C04874", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 3, "to": "C00009", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C05925", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C00013", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C06148", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C20239", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C00084", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C21094", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C01300", "width": 1}, {"f_stoich": -1, "from": "C04895", "r_stoich": 1, "to": "C21615", "width": 1}, {"f_stoich": -1, "from": "C01304", "r_stoich": 1, "to": "C01268", "width": 1}, {"f_stoich": -1, "from": "C01304", "r_stoich": 1, "to": "C15563", "width": 1}, {"f_stoich": -1, "from": "C01304", "r_stoich": 1, "to": "C18910", "width": 1}, {"f_stoich": -1, "from": "C01304", "r_stoich": 1, "to": "C00003", "width": 1}, {"f_stoich": -1, "from": "C01304", "r_stoich": 1, "to": "C05925", "width": 1}, {"f_stoich": -1, "from": "C00009", "r_stoich": 1, "to": "C00060", "width": 1}, {"f_stoich": -1, "from": "C00002", "r_stoich": 1, "to": "C00008", "width": 1}, {"f_stoich": -1, "from": "C00002", "r_stoich": 1, "to": "C02405", "width": 1}, {"f_stoich": -1, "from": "C00002", "r_stoich": 1, "to": "C00020", "width": 1}, {"f_stoich": -1, "from": "C00002", "r_stoich": 1, "to": "C04494", "width": 1}, {"f_stoich": -1, "from": "C00002", "r_stoich": 1, "to": "C00013", "width": 1}, {"f_stoich": -1, "from": "C00002", "r_stoich": 1, "to": "C00313", "width": 1}, {"f_stoich": -1, "from": "C00008", "r_stoich": 1, "to": "C00035", "width": 1}, {"f_stoich": -1, "from": "C00003", "r_stoich": 1, "to": "C00004", "width": 1}, {"f_stoich": -1, "from": "C00004", "r_stoich": 1, "to": "C18910", "width": 1}, {"f_stoich": -1, "from": "C00798", "r_stoich": 1, "to": "C00313", "width": 1}, {"f_stoich": -1, "from": "C00798", "r_stoich": 1, "to": "C22401", "width": 1}, {"f_stoich": -1, "from": "C00798", "r_stoich": 1, "to": "C22405", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00313", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00027", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00036", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00048", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00007", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00072", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00020", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00013", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C00042", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 1, "to": "C11150", "width": 1}, {"f_stoich": -1, "from": "C00209", "r_stoich": 2, "to": "C00138", "width": 1}, {"f_stoich": -1, "from": "C00488", "r_stoich": 1, "to": "C00439", "width": 1}, {"f_stoich": -1, "from": "C00084", "r_stoich": 1, "to": "C05714", "width": 1}, {"f_stoich": -1, "from": "C02659", "r_stoich": 1, "to": "C00207", "width": 1}, {"f_stoich": -1, "from": "C00232", "r_stoich": 1, "to": "C05715", "width": 1}, {"f_stoich": -1, "from": "C00561", "r_stoich": 1, "to": "C00261", "width": 1}, {"f_stoich": -1, "from": "C03742", "r_stoich": 1, "to": "C00633", "width": 1}, {"f_stoich": -1, "from": "C00097", "r_stoich": 1, "to": "C00283", "width": 1}, {"f_stoich": -1, "from": "C00097", "r_stoich": 1, "to": "C02512", "width": 1}, {"f_stoich": -1, "from": "C00037", "r_stoich": 2, "to": "C00030", "width": 1}, {"f_stoich": -2, "from": "C00028", "r_stoich": 2, "to": "C00030", "width": 1}, {"f_stoich": -1, "from": "C04178", "r_stoich": 1, "to": "C16248", "width": 1}, {"f_stoich": -1, "from": "C00007", "r_stoich": 1, "to": "C16248", "width": 1}, {"f_stoich": -1, "from": "C00007", "r_stoich": 1, "to": "C00027", "width": 1}, {"f_stoich": -1, "from": "C00007", "r_stoich": 1, "to": "C01620", "width": 1}, {"f_stoich": -1, "from": "C00035", "r_stoich": 1, "to": "C00060", "width": 1}, {"f_stoich": -1, "from": "C00060", "r_stoich": 1, "to": "C00040", "width": 1}, {"f_stoich": -1, "from": "C00313", "r_stoich": 1, "to": "C00091", "width": 1}, {"f_stoich": -1, "from": "C22401", "r_stoich": 1, "to": "C22402", "width": 1}, {"f_stoich": -1, "from": "C22405", "r_stoich": 1, "to": "C22406", "width": 1}, {"f_stoich": -1, "from": "C00027", "r_stoich": 1, "to": "C00048", "width": 1}, {"f_stoich": -1, "from": "C00036", "r_stoich": 1, "to": "C00033", "width": 1}, {"f_stoich": -1, "from": "C00072", "r_stoich": 1, "to": "C01620", "width": 1}, {"f_stoich": -1, "from": "C00091", "r_stoich": 1, "to": "C00042", "width": 1}, {"f_stoich": -1, "from": "C11150", "r_stoich": 3, "to": "C01327", "width": 1}, {"f_stoich": -2, "from": "C00139", "r_stoich": 2, "to": "C00138", "width": 1}, {"f_stoich": -1, "from": "C00439", "r_stoich": 1, "to": "C00025", "width": 1}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
