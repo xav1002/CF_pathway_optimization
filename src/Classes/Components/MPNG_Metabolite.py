@@ -8,12 +8,15 @@ class MPNG_Metabolite:
     # MW
     # reactions
 
-    def __init__(self,entry:str,names:list[str],formula:str,MW:float,reactions:list[str]):
+    def __init__(self,entry:str,names:list[str],formula:str,MW:float,reactions:list[str],bonds:dict[str,int]):
         self.__entry = entry
         self.__names = names
         self.__formula = formula
         self.__MW = MW
         self.__reactions = reactions
+        self.__bonds = bonds
+
+        self.__bond_energy_dict = {}
 
         self.__conc = 0
         self.__explored = False

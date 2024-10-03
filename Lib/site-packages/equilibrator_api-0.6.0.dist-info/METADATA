@@ -1,0 +1,110 @@
+Metadata-Version: 2.1
+Name: equilibrator-api
+Version: 0.6.0
+Summary: Calculation of standard thermodynamic potentials of biochemical reactions
+Author-email: Elad Noor <elad.noor@weizmann.ac.il>, "Moritz E. Beber" <midnighter@posteo.net>
+License: MIT License
+Project-URL: repository, https://gitlab.com/equilibrator/equilibrator-api/
+Project-URL: documentation, https://equilibrator.readthedocs.io/en/latest/
+Keywords: component contribution,Gibbs energy,biochemical reaction,eQuilibrator
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: Topic :: Scientific/Engineering :: Chemistry
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pyparsing ~=3.1
+Requires-Dist: python-slugify ~=8.0
+Requires-Dist: equilibrator-cache ~=0.6.0
+Requires-Dist: component-contribution ~=0.6.0
+Provides-Extra: deployment
+Requires-Dist: click ; extra == 'deployment'
+Requires-Dist: click-log ; extra == 'deployment'
+Requires-Dist: python-dateutil ; extra == 'deployment'
+Requires-Dist: requests ; extra == 'deployment'
+Provides-Extra: development
+Requires-Dist: black ; extra == 'development'
+Requires-Dist: isort ; extra == 'development'
+Requires-Dist: flake8 ; extra == 'development'
+Requires-Dist: safety ; extra == 'development'
+Requires-Dist: tox ; extra == 'development'
+Requires-Dist: twine ; extra == 'development'
+Provides-Extra: test
+Requires-Dist: pytest ; extra == 'test'
+Requires-Dist: pytest-cov ; extra == 'test'
+Requires-Dist: pytest-raises ; extra == 'test'
+Requires-Dist: pytest-mock ; extra == 'test'
+Requires-Dist: pytest-allclose ; extra == 'test'
+Requires-Dist: cobra ; extra == 'test'
+Requires-Dist: sbtab ; extra == 'test'
+
+# eQuilibrator - a thermodynamics calculator for biochemical reactions
+
+[![PyPI version](https://badge.fury.io/py/equilibrator-api.svg)](https://badge.fury.io/py/equilibrator-api)
+[![Anaconda-Server Badge](https://anaconda.org/conda-forge/equilibrator-api/badges/version.svg)](https://anaconda.org/conda-forge/equilibrator-api)
+[![Python version](https://img.shields.io/pypi/pyversions/equilibrator-api.svg)](https://www.python.org/downloads)
+[![MIT license](https://img.shields.io/pypi/l/equilibrator-api.svg)](https://mit-license.org/)
+
+[![pipeline status](https://gitlab.com/elad.noor/equilibrator-api/badges/develop/pipeline.svg)](https://gitlab.com/elad.noor/equilibrator-api/commits/develop)
+[![codecov](https://codecov.io/gl/equilibrator/equilibrator-api/branch/develop/graph/badge.svg?token=OxxaCqgaLs)](https://codecov.io/gl/equilibrator/equilibrator-api)
+[![Join our Google group](https://img.shields.io/badge/google_group-equilibrator_users-blue)](https://groups.google.com/g/equilibrator-users)
+[![Documentation Status](https://readthedocs.org/projects/equilibrator/badge/?version=latest)](https://equilibrator.readthedocs.io/en/latest/?badge=latest)
+
+
+## What is `equilibrator-api`?
+
+`equilibrator-api` is a Python package for obtaining estimates of reactions Gibbs energies.
+It is mainly meant for biologists/bioengineers with basic programming skills that
+work on metabolism and want to easily add thermodynamic data to their models.
+
+The documentation is browseable online at
+[readthedocs](https://equilibrator.readthedocs.io/en/latest/index.html).
+
+If your list of reactions is very short, we recommend trying our
+website called [eQuilibrator](http://equilibrator.weizmann.ac.il/) before spending
+the time necessary for learning how to use `equilibrator-api`.
+
+The main advantages of `equilibrator-api` are:
+
+* Batch mode: can be used for large reaction datasets (even more than 1000 reactions)
+* Does not require a network connection (except during installation and initialization)
+* Works with standard compound identifiers (such as ChEBI, KEGG, BiGG and MetaNetX) for more than 500,000 compounds
+
+To access more advanced features, such as adding new compounds that are not
+among the 500,000 currently in the MetaNetX database, try using our 
+[equilibrator-assets](https://gitlab.com/equilibrator/equilibrator-assets)
+package.
+
+## Cite us
+
+If you plan to use results from `equilibrator-api` in a scientific publication,
+please cite our paper:
+
+M. E. Beber, M. G. Gollub, D. Mozaffari, K. M. Shebek, A. I. Flamholz, R. Milo, and E. Noor,
+*eQuilibrator 3.0: a database solution for thermodynamic constant estimation*
+Nucleic Acids Research (2021), [DOI:10.1093/nar/gkab1106](http://dx.doi.org/10.1093/nar/gkab1106)
+
+## A very simple example
+
+Note that creating a `ComponentContribution` object for the first time after
+installation, starts an initialization step which downloads ~1.5 GBytes of data
+to your computer. It can take more than an hour (depending on the connection speed).
+Note that the initialization might not work inside a Jupyter notebook environment - 
+in that case you should try running it in a standard python shell first and then
+run the Jupyter notebook.
+
+```python
+from equilibrator_api import ComponentContribution
+cc = ComponentContribution()
+rxn = cc.parse_reaction_formula("kegg:C00002 + kegg:C00001 = kegg:C00008 + kegg:C00009")
+print(f"ΔG'0 = {cc.standard_dg_prime(rxn)}")
+```

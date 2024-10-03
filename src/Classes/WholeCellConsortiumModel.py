@@ -34,6 +34,15 @@ class WholeCellConsortiumModel:
         return
 
     def seek_optimal_pathway(self) -> None:
+        # 1. initialize pathway search from substrates and products (Gibb's sampling)
+
+        # 2. Upon graph crossover, combine graphs
+
+        # 3. Continue to grow graphs until max lvls or pathway count is reached
+
+        # 4. assess pathways found
+
+        # 5. search less desirable metabolites/reactions
         return
 
     def __seek_products(self,root_metabolite_entries:list[str],max_lvls:int) -> None:
@@ -76,6 +85,7 @@ class WholeCellConsortiumModel:
 
     def grow_graph_test(self) -> None:
         [root,[],[]] = parse_KEGG(['C00058'])
+        print(root[0].entry)
 
         graph = MetabolicPathwayNetworkGraph('test_graph_root_'+root[0].names[0],root)
 
@@ -88,16 +98,32 @@ class WholeCellConsortiumModel:
             lvl_ct += 1
             print("Level "+str(lvl_ct)+" completed.")
 
-        return graph.NX_Graph
+        net = Network(notebook=True,cdn_resources="local",width="100%",height="600px")
+        net.from_nx(graph.NX_Graph)
+        for node in net.nodes:
+            n_id = node['id']
+            node['label'] = graph.get_metabolite_by_entry(n_id).names[0]
+            node['size'] = 20
+            node['shape'] = 'image'
+            node['image'] = 'https://rest.kegg.jp/get/'+n_id+'/image'
+
+        net.show('test.html',local=True,notebook=False)
+
+        return graph
 
         # net = Network(notebook=False,cdn_resources="remote",width="100%",height="600px")
         # net.from_nx(graph.NX_Graph)
         # return net
 
+    def validate_pathway(self):
+        # check redox balance and optimized production of given pathway with constraint based model
+        # optimize based on thermodynamics
+        return
+
     def __grow_graph(self,graph:MetabolicPathwayNetworkGraph) -> MetabolicPathwayNetworkGraph:
         for leaf in graph.leaf_metabolites:
+            print("leaf:",leaf)
             # query all reactions for given leaf metabolite
-            print(leaf.reactions)
             [[],rxns,[]] = parse_KEGG(leaf.reactions)
 
             for rxn in rxns:

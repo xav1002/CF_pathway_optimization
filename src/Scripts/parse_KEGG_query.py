@@ -1,12 +1,14 @@
 import requests
 import re
 from io import StringIO
+import time
+from equilibrator_api import ComponentContribution
 
 from MPNG_Metabolite import MPNG_Metabolite
 from MPNG_Reaction import MPNG_Reaction
 from MPNG_Enzyme import MPNG_Enzyme
 
-def parse_KEGG(query_items:list|str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_Enzyme:
+def parse_KEGG(query_items:list|str,cc:ComponentContribution) -> MPNG_Metabolite | MPNG_Reaction | MPNG_Enzyme:
     if type(query_items) == str:
         query_items_all = query_items
         if query_items[0] == 'C' or query_items[0] == 'R':
@@ -27,8 +29,12 @@ def parse_KEGG(query_items:list|str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_E
     print(KEGG_link)
     try:
         req_raw = requests.get(KEGG_link)
+        print(req_raw.text)
     except Exception as e:
         print('KEGG request error:',e)
+        time.sleep(1/3)
+        req_raw = requests.get(KEGG_link)
+
     req_2 = list(filter(lambda x: x!='' and x!='\n',re.split(r'///',req_raw.text)))
 
     metabolites: list = []
@@ -108,7 +114,7 @@ def parse_KEGG(query_items:list|str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_E
                     if not line_level_1.startswith("/"):
                         if category == "ENTRY":
                             entry = line_level_1.replace("ENTRY","").replace("Reaction","").strip()
-                            print(entry)
+                            # print(entry)
                         elif category == "NAME":
                             names = names+list(filter(lambda x: x!='',list(map(lambda x: x.strip(),re.split(';',line_level_1.replace("NAME",""))))))
                         elif category == "DEFINITION":
@@ -117,7 +123,7 @@ def parse_KEGG(query_items:list|str) -> MPNG_Metabolite | MPNG_Reaction | MPNG_E
                             equation = line_level_1.replace("EQUATION","").strip()
                         elif line_level_1.startswith("ENZYME"):
                             enzyme_id = line_level_1.replace("ENZYME","").strip()
-                reactions.append(MPNG_Reaction(entry,names,definition,equation,enzyme_id))
+                reactions.append(MPNG_Reaction(entry,names,definition,equation,enzyme_id,cc))
 
             # MPNG_Enzyme
             case 'E':

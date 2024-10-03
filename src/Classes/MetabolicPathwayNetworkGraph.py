@@ -16,8 +16,8 @@ class MetabolicPathwayNetworkGraph:
         self.__name = name
         self.__root_metabolite = root_metabolite
         self.__leaf_metabolites = root_metabolite
-        self.__metabolites: list[MPNG_Metabolite] = []
-        self.__reactions: list[MPNG_Reaction] = []
+        self.__metabolites: dict[MPNG_Metabolite] = {}
+        self.__reactions: dict[MPNG_Reaction] = {}
 
         self.__COBRA_model: Model = Model(name+'_cobra')
         # self.__NX_Graph: nx.Graph = nx.Graph(name+'_nx')
@@ -79,15 +79,28 @@ class MetabolicPathwayNetworkGraph:
     @metabolites.setter
     def metabolites(self,new_metabolites:MPNG_Metabolite|list[MPNG_Metabolite]|list) -> None:
         if type(new_metabolites) is MPNG_Metabolite:
-            self.metabolites.append(new_metabolites)
+            self.__metabolites[str(new_metabolites.entry)] = new_metabolites
         elif type(new_metabolites) is list[MPNG_Metabolite]:
-            self.metabolites = new_metabolites
+            self.__metabolites = {}
+            for m in new_metabolites:
+                self.__metabolites[str(m.entry)] = m
         elif type(new_metabolites) is list and new_metabolites == []:
-            self.metabolites = []
+            self.__metabolites = {}
 
     @property
     def reactions(self) -> list[MPNG_Reaction]:
         return self.__reactions
+
+    @reactions.setter
+    def reactions(self,new_reactions:MPNG_Reaction|list[MPNG_Reaction]|list) -> None:
+        if type(new_reactions) is MPNG_Metabolite:
+            self.__reactions[str(new_reactions.entry)] = new_reactions
+        elif type(new_reactions) is list[MPNG_Metabolite]:
+            self.__reactions = {}
+            for r in new_reactions:
+                self.__reactions[str(r.entry)] = r
+        elif type(new_reactions) is list and new_reactions == []:
+            self.__reactions = {}
 
     @property
     def temperature(self) -> float:
@@ -113,6 +126,9 @@ class MetabolicPathwayNetworkGraph:
     # def E_carriers(self,new_E_carriers:dict) -> None:
     #     self.__E_carriers = new_E_carriers
 
+    def get_metabolite_by_entry(self,entry:str) -> MPNG_Metabolite:
+        return self.__metabolites[entry]
+
     def __update_COBRA_model(self,new_reaction:MPNG_Reaction) -> None:
         # COBRA automatically checks if reaction already exists (ignored if it does)
         reaction: Reaction = Reaction(new_reaction.entry)
@@ -120,6 +136,8 @@ class MetabolicPathwayNetworkGraph:
         self.COBRA_model.add_reactions([reaction])
 
     def add_reaction(self,new_reaction:MPNG_Reaction,new_metabolites:list[MPNG_Metabolite]) -> None:
+        # add MPNG_Reaction to MPNG
+        self.reactions = new_reaction
         # add to NX Graph
         old_leaves: list[MPNG_Metabolite] = []
         new_leaves: list[MPNG_Metabolite] = []
@@ -147,10 +165,28 @@ class MetabolicPathwayNetworkGraph:
 
     def update_explored_leaves(self) -> None:
         self.leaf_metabolites = []
-        for metabolite in self.metabolites:
+        for metabolite in self.metabolites.values():
             if not metabolite.explored and len(metabolite.reactions) < 100 and metabolite.entry not in self.common_metabolites:
                 self.leaf_metabolites.append(metabolite)
+        # rank leaf_metabolites by individual metrics, calculate weighting, then determine composite optimal leaf_metabolites
+        for leaf in self.leaf_metabolites:
+            # calculate weights for leaf_metabolites with respect to dGr
+
+            # calculate weights for leaf_metabolites with respect to dHf relative to substrates
+
+            # calculate weights for leaf metabolites with respect to redox demand
+
+            return
 
     def flip_stoichiometry(self) -> None:
         # flip the stoichiometry when a tree with root at end product needs to be integrated with tree with root at initial substrate
+        return
+
+    def calc_dGr_explore_weight(self):
+        return
+
+    def calc_dHr_explore_weight(self):
+        return
+
+    def calc_rxn_redox_explore_weight(self):
         return
