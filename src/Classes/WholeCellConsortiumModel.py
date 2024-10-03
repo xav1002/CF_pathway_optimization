@@ -95,6 +95,7 @@ class WholeCellConsortiumModel:
             # grow graph
             graph = self.__grow_graph(graph)
             # check for overlap with other graphs
+
             lvl_ct += 1
             print("Level "+str(lvl_ct)+" completed.")
 
@@ -140,6 +141,7 @@ class WholeCellConsortiumModel:
         return graph
 
     def __combine_graphs(self,graph1:MetabolicPathwayNetworkGraph,graph2:MetabolicPathwayNetworkGraph):
+        # networkx compose()
         return
 
     def __query_graph_details(self) -> None:

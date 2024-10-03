@@ -93,9 +93,9 @@ class MetabolicPathwayNetworkGraph:
 
     @reactions.setter
     def reactions(self,new_reactions:MPNG_Reaction|list[MPNG_Reaction]|list) -> None:
-        if type(new_reactions) is MPNG_Metabolite:
+        if type(new_reactions) is MPNG_Reaction:
             self.__reactions[str(new_reactions.entry)] = new_reactions
-        elif type(new_reactions) is list[MPNG_Metabolite]:
+        elif type(new_reactions) is list[MPNG_Reaction]:
             self.__reactions = {}
             for r in new_reactions:
                 self.__reactions[str(r.entry)] = r
@@ -145,7 +145,7 @@ class MetabolicPathwayNetworkGraph:
         key_entries = list(map(lambda x: x.id,list(stoich.keys())))
         new_metabolite_entries = list(map(lambda x: x.entry,new_metabolites))
         for idx,m in enumerate(new_metabolite_entries):
-            if m not in self.NX_Graph.nodes:
+            if m not in self.NX_Graph.nodes and m not in self.common_metabolites:
                 self.NX_Graph.add_node(m)
                 self.metabolites = new_metabolites[idx]
             if stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
