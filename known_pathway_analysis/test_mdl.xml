@@ -14,22 +14,24 @@
       <compartment id="c" constant="true"/>
     </listOfCompartments>
     <listOfSpecies>
-      <species id="M_C00024" name="Acetyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00010" name="CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00332" name="Acetoacetyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C01144" name="(S)-3-Hydroxybutanoyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00006" name="NADP+" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00005" name="NADPH" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00080" name="H+" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00877" name="Crotonoyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00001" name="H2O" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00136" name="Butanoyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00003" name="NAD+" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00138" name="Reduced" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00004" name="NADH" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00139" name="Oxidized" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00033" name="Acetate" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
-      <species id="M_C00246" name="Butanoic" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00024_c" name="Acetyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00010_c" name="CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00332_c" name="Acetoacetyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C01144_c" name="(S)-3-Hydroxybutanoyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00003_c" name="NAD+" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00004_c" name="NADH" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00080_c" name="H+" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00877_c" name="Crotonoyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00001_c" name="H2O" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00136_c" name="Butanoyl-CoA" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00138_c" name="Reducedferredoxin" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00139_c" name="Oxidizedferredoxin" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00033_c" name="Acetate" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00246_c" name="Butanoic" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00058_c" name="Formate" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00011_c" name="CO2" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00469_c" name="Ethanol" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="M_C00084_c" name="Acetaldehyde" compartment="c" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
     </listOfSpecies>
     <listOfParameters>
       <parameter sboTerm="SBO:0000626" id="cobra_default_lb" value="-1000" constant="true"/>
@@ -41,68 +43,124 @@
     <listOfReactions>
       <reaction id="R_R00238" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
         <listOfReactants>
-          <speciesReference species="M_C00024" stoichiometry="2" constant="true"/>
+          <speciesReference species="M_C00024_c" stoichiometry="2" constant="true"/>
         </listOfReactants>
         <listOfProducts>
-          <speciesReference species="M_C00010" stoichiometry="1" constant="true"/>
-          <speciesReference species="M_C00332" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00010_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00332_c" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction id="R_R01976" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <reaction id="R_R01975" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
         <listOfReactants>
-          <speciesReference species="M_C01144" stoichiometry="1" constant="true"/>
-          <speciesReference species="M_C00006" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C01144_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00003_c" stoichiometry="1" constant="true"/>
         </listOfReactants>
         <listOfProducts>
-          <speciesReference species="M_C00005" stoichiometry="1" constant="true"/>
-          <speciesReference species="M_C00080" stoichiometry="1" constant="true"/>
-          <speciesReference species="M_C00332" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00004_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00080_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00332_c" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
       <reaction id="R_R03026" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
         <listOfReactants>
-          <speciesReference species="M_C01144" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C01144_c" stoichiometry="1" constant="true"/>
         </listOfReactants>
         <listOfProducts>
-          <speciesReference species="M_C00877" stoichiometry="1" constant="true"/>
-          <speciesReference species="M_C00001" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00877_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00001_c" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
       <reaction id="R_R11675" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
         <listOfReactants>
-          <speciesReference species="M_C00136" stoichiometry="1" constant="true"/>
-          <speciesReference species="M_C00003" stoichiometry="2" constant="true"/>
-          <speciesReference species="M_C00138" stoichiometry="2" constant="true"/>
+          <speciesReference species="M_C00136_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00138_c" stoichiometry="2" constant="true"/>
+          <speciesReference species="M_C00003_c" stoichiometry="2" constant="true"/>
         </listOfReactants>
         <listOfProducts>
-          <speciesReference species="M_C00004" stoichiometry="2" constant="true"/>
-          <speciesReference species="M_C00139" stoichiometry="2" constant="true"/>
-          <speciesReference species="M_C00877" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00139_c" stoichiometry="2" constant="true"/>
+          <speciesReference species="M_C00877_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00004_c" stoichiometry="2" constant="true"/>
         </listOfProducts>
       </reaction>
       <reaction id="R_R01179" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
         <listOfReactants>
-          <speciesReference species="M_C00033" stoichiometry="1" constant="true"/>
-          <speciesReference species="M_C00136" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00033_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00136_c" stoichiometry="1" constant="true"/>
         </listOfReactants>
         <listOfProducts>
-          <speciesReference species="M_C00246" stoichiometry="1" constant="true"/>
-          <speciesReference species="M_C00024" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00246_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00024_c" stoichiometry="1" constant="true"/>
         </listOfProducts>
       </reaction>
-      <reaction metaid="meta_R_SK_C00033" sboTerm="SBO:0000632" id="R_SK_C00033" name="Acetate sink" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <reaction id="R_R11818" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
         <listOfReactants>
-          <speciesReference species="M_C00033" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00058_c" stoichiometry="2" constant="true"/>
+          <speciesReference species="M_C00003_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00139_c" stoichiometry="2" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="M_C00011_c" stoichiometry="2" constant="true"/>
+          <speciesReference species="M_C00004_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00080_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00138_c" stoichiometry="2" constant="true"/>
+        </listOfProducts>
+      </reaction>
+      <reaction id="R_R00754" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+        <listOfReactants>
+          <speciesReference species="M_C00469_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00003_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="M_C00084_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00004_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00080_c" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+      </reaction>
+      <reaction id="R_R00228" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+        <listOfReactants>
+          <speciesReference species="M_C00084_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00010_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00003_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="M_C00024_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00004_c" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00080_c" stoichiometry="1" constant="true"/>
+        </listOfProducts>
+      </reaction>
+      <reaction metaid="meta_R_SK_C00033_c" sboTerm="SBO:0000632" id="R_SK_C00033_c" name="Acetate sink" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+        <listOfReactants>
+          <speciesReference species="M_C00033_c" stoichiometry="1" constant="true"/>
         </listOfReactants>
       </reaction>
-      <reaction metaid="meta_R_SK_C00246" sboTerm="SBO:0000632" id="R_SK_C00246" name="Butanoic sink" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+      <reaction metaid="meta_R_SK_C00246_c" sboTerm="SBO:0000632" id="R_SK_C00246_c" name="Butanoic sink" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
         <listOfReactants>
-          <speciesReference species="M_C00246" stoichiometry="1" constant="true"/>
+          <speciesReference species="M_C00246_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+      </reaction>
+      <reaction metaid="meta_R_SK_C00001_c" sboTerm="SBO:0000632" id="R_SK_C00001_c" name="H2O sink" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+        <listOfReactants>
+          <speciesReference species="M_C00001_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+      </reaction>
+      <reaction metaid="meta_R_SK_C00058_c" sboTerm="SBO:0000632" id="R_SK_C00058_c" name="Formate sink" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+        <listOfReactants>
+          <speciesReference species="M_C00058_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+      </reaction>
+      <reaction metaid="meta_R_SK_C00011_c" sboTerm="SBO:0000632" id="R_SK_C00011_c" name="CO2 sink" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+        <listOfReactants>
+          <speciesReference species="M_C00011_c" stoichiometry="1" constant="true"/>
+        </listOfReactants>
+      </reaction>
+      <reaction metaid="meta_R_SK_C00469_c" sboTerm="SBO:0000632" id="R_SK_C00469_c" name="Ethanol sink" reversible="true" fast="false" fbc:lowerFluxBound="cobra_default_lb" fbc:upperFluxBound="cobra_default_ub">
+        <listOfReactants>
+          <speciesReference species="M_C00469_c" stoichiometry="1" constant="true"/>
         </listOfReactants>
       </reaction>
     </listOfReactions>
     <fbc:listOfObjectives fbc:activeObjective="obj">
-      <fbc:objective fbc:id="obj" fbc:type="maximize">
+      <fbc:objective fbc:id="obj" fbc:type="minimize">
         <fbc:listOfFluxObjectives>
           <fbc:fluxObjective fbc:reaction="R_R01179" fbc:coefficient="1"/>
         </fbc:listOfFluxObjectives>

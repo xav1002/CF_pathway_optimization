@@ -207,7 +207,7 @@ class KPA_Reaction:
 
         [self.__stoich,self.__equil_rxns] = self.parse_equation(cc)
         self.__metabolites = []
-        self.__cobra_rxn = cobra.Reaction(self.__entry,lower_bound=-1000,upper_bound=1000)
+        self.__cobra_rxn = cobra.Reaction(self.__entry,lower_bound=None,upper_bound=1000)
         self.__cobra_rxn.add_metabolites(self.__stoich)
 
     @property
@@ -265,16 +265,19 @@ class KPA_Reaction:
         for idx,sub in enumerate(subs_wth_stoich):
             stoich = re.split(' ',sub.strip())
             sub_name_stoich = re.split(' ',sub_names_wth_stoich[idx].strip())
-            print(stoich)
-            print(sub_name_stoich)
             if len(stoich) == 1:
-                metabolite = cobra.Metabolite(id=stoich[0],name=sub_name_stoich[0],
+                metabolite = cobra.Metabolite(id=str(stoich[0]),name=sub_name_stoich[0],
                                               compartment='c')
                 compound = cc.get_compound(compound_id='kegg:'+str(stoich[0]))
                 num = 1
-            elif len(stoich) == 2:
-                metabolite = cobra.Metabolite(id=stoich[1],name=sub_name_stoich[1],
-                                              compartment='c')
+            else:
+                name = sub_name_stoich[1]
+                if len(sub_name_stoich) == 2:
+                    name = sub_name_stoich[1]
+                else:
+                    name = ''.join(str(x) for x in sub_name_stoich[1:])
+                metabolite = cobra.Metabolite(id=str(stoich[1]),name=name,
+                                            compartment='c')
                 compound = cc.get_compound(compound_id='kegg:'+str(stoich[1]))
                 num = stoich[0].replace('n','')
                 if num == '': num = '1'
@@ -284,12 +287,17 @@ class KPA_Reaction:
             stoich = re.split(' ',prod.strip())
             prod_name_stoich = re.split(' ',prod_names_wth_stoich[idx].strip())
             if len(stoich) == 1:
-                metabolite = cobra.Metabolite(id=stoich[0],name=prod_name_stoich[0],
+                metabolite = cobra.Metabolite(id=str(stoich[0]),name=prod_name_stoich[0],
                                               compartment='c')
                 compound = cc.get_compound(compound_id='kegg:'+str(stoich[0]))
                 num = 1
-            elif len(stoich) == 2:
-                metabolite = cobra.Metabolite(id=stoich[1],name=prod_name_stoich[1],
+            else:
+                name = prod_name_stoich[1]
+                if len(prod_name_stoich) == 2:
+                    name = prod_name_stoich[1]
+                else:
+                    name = ''.join(str(x) for x in prod_name_stoich[1:])
+                metabolite = cobra.Metabolite(id=str(stoich[1]),name=name,
                                               compartment='c')
                 compound = cc.get_compound(compound_id='kegg:'+str(stoich[1]))
                 num = stoich[0].replace('n','')
