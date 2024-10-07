@@ -26,7 +26,7 @@ class MPNG_Reaction:
         self.enzyme_id = enzyme_id
         self.cc = cc
 
-        [self.__stoich,self.__equil_rxn] = self.parse_equation()
+        [self.__stoich,self.__equil_rxn] = self.parse_equation(cc)
         self.__dGr_prime = cc.dg_prime(self.__equil_rxn)
 
     @property
@@ -65,7 +65,7 @@ class MPNG_Reaction:
     def get_Enzyme_ID(self) -> str:
         return self.enzyme_id
 
-    def parse_equation(self) -> dict:
+    def parse_equation(self,cc:ComponentContribution) -> dict:
         [sub_str,prod_str] = re.split('<=>',self.equation)
         [sub_names,prod_names] = re.split('<=>',self.definition)
 
@@ -82,11 +82,11 @@ class MPNG_Reaction:
             sub_name_stoich = re.split(' ',sub_names_wth_stoich[idx].strip())
             if len(stoich) == 1:
                 metabolite = Metabolite(id=stoich[0],name=sub_name_stoich[0])
-                compound = ComponentContribution.get_compound(compound_id='kegg'+str(stoich[0]))
+                compound = cc.get_compound(compound_id='kegg'+str(stoich[0]))
                 num = 1
             elif len(stoich) == 2:
                 metabolite = Metabolite(id=stoich[1],name=sub_name_stoich[1])
-                compound = ComponentContribution.get_compound(compound_id='kegg'+str(stoich[1]))
+                compound = cc.get_compound(compound_id='kegg'+str(stoich[1]))
                 num = stoich[0].replace('n','')
                 if num == '': num = '1'
             new_stoich[metabolite] = -int(num)
@@ -96,11 +96,11 @@ class MPNG_Reaction:
             prod_name_stoich = re.split(' ',prod_names_wth_stoich[idx].strip())
             if len(stoich) == 1:
                 metabolite = Metabolite(id=stoich[0],name=prod_name_stoich[0])
-                compound = ComponentContribution.get_compound(compound_id='kegg'+str(stoich[0]))
+                compound = cc.get_compound(compound_id='kegg'+str(stoich[0]))
                 num = 1
             elif len(stoich) == 2:
                 metabolite = Metabolite(id=stoich[1],name=prod_name_stoich[1])
-                compound = ComponentContribution.get_compound(compound_id='kegg'+str(stoich[1]))
+                compound = cc.get_compound(compound_id='kegg'+str(stoich[1]))
                 num = stoich[0].replace('n','')
                 if num == '': num = '1'
             new_stoich[metabolite] = int(num)
