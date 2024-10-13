@@ -62,7 +62,7 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
                     elif line_level_1.startswith("REMARK"):
                         category = ""
                     elif line_level_1.startswith("COMMENT"):
-                        category = ""
+                        category = "COMMENT"
                     elif line_level_1.startswith("EXACT_MASS"):
                         category = "EXACT_MASS"
                     elif line_level_1.startswith("REACTION"):
@@ -83,12 +83,28 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
                             MW = float(line_level_1.replace("MOL_WEIGHT","").strip())
                         elif category == "REACTION":
                             rxn_names = rxn_names+list(filter(lambda x: x!='',list(map(lambda x: x.strip(),re.split(' ',line_level_1.replace("REACTION",""))))))
+                        elif category == "COMMENT":
+                            text = line_level_1.replace("COMMENT","").strip()
+                            # In WCCM, need to create map for each generic compound to a list of compounds that fall under that category
+                            # Here, just assume that generic acyl-CoA is a hexanoyl-CoA
+                            if text == "Generic compound in reaction hierarchy" and entry == 'C00040':
+                                entry = 'C05270'
+                                names = ['Hexanoyl-CoA']
+                                formula = 'C27H46N7O17P3S'
+                                MW = float(865.68)
+                                rxn_names = ['R04747','R04751','R06985','R08796','R08797','R10171']
+                            elif text == "Generic compound in reaction hierarchy" and entry == 'C02403':
+                                entry = 'C01585'
+                                names = ['Hexanoic acid','Hexanoate','Hexylic acid','n-Caproic acid']
+                                formula = 'C6H12O2'
+                                MW = float(116.16)
+                                rxn_names = ['R03620']
                 metabolites.append(KPA_Metabolite(entry,names,formula,MW,rxn_names))
 
             # KPA_Reaction
             case 'R':
                 names: list = []
-                enzyme_id = ""
+                enzyme_id = []
 
                 for line_level_1 in req_3:
                     line_level_1 = line_level_1.strip()
@@ -117,7 +133,7 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
                         elif category == "DEFINITION":
                             definition = line_level_1.replace("DEFINITION","").strip()
                         elif line_level_1.startswith("EQUATION"):
-                            equation = line_level_1.replace("EQUATION","").strip()
+                            equation = line_level_1.replace("EQUATION","").strip().replace("C00040","C05270").replace("C02403","C01585")
                         elif line_level_1.startswith("ENZYME"):
                             enzyme_id = list(set(re.split(' ',line_level_1.replace("ENZYME","").strip())))
                             if '' in enzyme_id: enzyme_id.remove('')
@@ -306,8 +322,8 @@ class KPA_Reaction:
                 if num == '': num = '1'
             new_stoich[metabolite] = int(num)
             new_rxn[compound] = int(num)
+            # print('test6',prod_name_stoich,stoich)
 
-        print('test',new_rxn)
         return [new_stoich,eq.Reaction(new_rxn)]
 
     def get_metabolite_entries(self) -> list[str]:
