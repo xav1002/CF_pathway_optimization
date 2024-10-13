@@ -15,11 +15,10 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
     elif type(query_items) == list:
         query_items_all = str(query_items.pop(0))
         query_type = query_items_all[0]
-        for x in query_items:
-            if x[0] == 'C' or x[0] == 'R':
-                query_items_all = query_items_all+'+'+x
-            else:
+        if not query_type[0] == 'C' and not query_type[0] == 'R':
                 query_type = 'E'
+        for x in query_items:
+            query_items_all = query_items_all+'+'+x
 
     KEGG_link = 'https://rest.kegg.jp/get/'+query_items_all
 
@@ -31,6 +30,7 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
         time.sleep(1/3)
         req_raw = requests.get(KEGG_link)
 
+    # print(req_raw.text)
     req_2 = list(filter(lambda x: x!='' and x!='\n',re.split(r'///',req_raw.text)))
 
     metabolites: list = []
@@ -136,7 +136,8 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
                             equation = line_level_1.replace("EQUATION","").strip().replace("C00040","C05270").replace("C02403","C01585")
                         elif line_level_1.startswith("ENZYME"):
                             enzyme_id = list(set(re.split(' ',line_level_1.replace("ENZYME","").strip())))
-                            if '' in enzyme_id: enzyme_id.remove('')
+                            while '' in enzyme_id: enzyme_id.remove('')
+                            # if '' in enzyme_id: enzyme_id.remove('')
                 reactions.append(KPA_Reaction(entry,names,definition,equation,enzyme_id,cc))
 
             # KPA_Enzyme
@@ -157,6 +158,8 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
                     elif line_level_1.startswith("SYSNAME"):
                         category = "SYSNAME"
                     elif line_level_1.startswith("REACTION"):
+                        category = ""
+                    elif line_level_1.startswith("ALL_REAC"):
                         category = "REACTION"
                     elif line_level_1.startswith("SUBSTRATE"):
                         category = "SUBSTRATE"
@@ -172,13 +175,21 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
                             names = list(map(lambda x: x.strip(),re.split(';',line_level_1.replace("NAME",""))))
                         elif category == "SYSNAME":
                             sysname = line_level_1.replace("SYSNAME","").strip()
+                        elif category == "REACTION":
+                            print('test2',line_level_1)
+                            reaction_entries = line_level_1.replace(';','').replace("REACTION","").replace("REACTION(KEGG)","").strip()
+                            print('test3',line_level_1)
+                            reaction_entries = re.split(' ',reaction_entries)
+                            while '' in reaction_entries: reaction_entries.remove('')
+                            print('test',reaction_entries)
+                            for rxn in reaction_entries:
+                                if rxn[0] != 'R':
+                                    reaction_entries.remove(rxn)
                         elif category == "SUBSTRATE":
                             substrates = substrates+list(filter(lambda x: x!='',re.split(';',line_level_1.replace("SUBSTRATE","").strip())))
                         elif category == "PRODUCT":
-                            products = products+list(filter(lambda x: x!='',re.split(';',line_level_1.replace("PRODUCT","").strip())))                
-                enzymes.append(KPA_Enzyme(entry,names,sysname,substrates,products))
-            case 'Glycan':
-                test = 1
+                            products = products+list(filter(lambda x: x!='',re.split(';',line_level_1.replace("PRODUCT","").strip())))
+                enzymes.append(KPA_Enzyme(entry,names,sysname,reaction_entries,substrates,products))
 
     # attrs = vars(enzymes[0])
     # print(', '.join("%s: %s" % item for item in attrs.items()))
@@ -334,5 +345,38 @@ class KPA_Reaction:
 
 class KPA_Enzyme:
 
-    def __init__(self):
-        return
+    def __init__(self,entry,names,sysname,reactions,substrates,products):
+        self.__entry = entry
+        self.__names = names
+        self.__sysname = sysname
+        self.__reactions = reactions
+        self.__substrates = substrates
+        self.__products = products
+
+    @property
+    def entry(self) -> str:
+        return self.__entry
+
+    @entry.setter
+    def entry(self,new_entry) -> None:
+        self.__entry = new_entry
+
+    @property
+    def names(self) -> list[str]:
+        return self.__names
+
+    @property
+    def sysname(self) -> str:
+        return self.__sysname
+
+    @property
+    def reactions(self) -> list[str]:
+        return self.__reactions
+
+    @property
+    def substrates(self) -> list[str]:
+        return self.__substrates
+
+    @property
+    def products(self) -> list[str]:
+        return self.__products
