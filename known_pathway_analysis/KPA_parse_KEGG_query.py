@@ -137,7 +137,7 @@ def KPA_parse_KEGG(query_items:list|str,cc:eq.ComponentContribution) -> any:
                         elif line_level_1.startswith("ENZYME"):
                             enzyme_id = list(set(re.split(' ',line_level_1.replace("ENZYME","").strip())))
                             while '' in enzyme_id: enzyme_id.remove('')
-                            # if '' in enzyme_id: enzyme_id.remove('')
+                            if '2.3.1.16' in enzyme_id: enzyme_id.remove('2.3.1.16')
                 reactions.append(KPA_Reaction(entry,names,definition,equation,enzyme_id,cc))
 
             # KPA_Enzyme
