@@ -18,16 +18,15 @@ class MPNG_Reaction:
 
     # Enzyme
 
-    def __init__(self,entry,names,definition,equation,enzyme_id,cc:ComponentContribution) -> None:
+    def __init__(self,entry,names,definition,equation,enzyme_id) -> None:
         self.entry = entry
         self.names = names
         self.definition = definition
         self.equation = equation
         self.enzyme_id = enzyme_id
-        self.cc = cc
 
-        [self.__stoich,self.__equil_rxn] = self.parse_equation(cc)
-        self.__dGr_prime = cc.dg_prime(self.__equil_rxn)
+        [self.__stoich] = self.parse_equation()
+        # self.__dGr_prime = cc.dg_prime(self.__equil_rxn)
 
     @property
     def metabolites(self) -> list[MPNG_Metabolite]:
@@ -65,7 +64,8 @@ class MPNG_Reaction:
     def get_Enzyme_ID(self) -> str:
         return self.enzyme_id
 
-    def parse_equation(self,cc:ComponentContribution) -> dict:
+    def parse_equation(self) -> dict:
+        print(self.equation)
         [sub_str,prod_str] = re.split('<=>',self.equation)
         [sub_names,prod_names] = re.split('<=>',self.definition)
 
@@ -82,28 +82,28 @@ class MPNG_Reaction:
             sub_name_stoich = re.split(' ',sub_names_wth_stoich[idx].strip())
             if len(stoich) == 1:
                 metabolite = Metabolite(id=stoich[0],name=sub_name_stoich[0])
-                compound = cc.get_compound(compound_id='kegg'+str(stoich[0]))
+                # compound = cc.get_compound(compound_id='kegg'+str(stoich[0]))
                 num = 1
             elif len(stoich) == 2:
                 metabolite = Metabolite(id=stoich[1],name=sub_name_stoich[1])
-                compound = cc.get_compound(compound_id='kegg'+str(stoich[1]))
-                num = stoich[0].replace('n','')
+                # compound = cc.get_compound(compound_id='kegg'+str(stoich[1]))
+                num = stoich[0].replace('n+','').replace('n','').replace('(','').replace(')','')
                 if num == '': num = '1'
             new_stoich[metabolite] = -int(num)
-            new_rxn[compound] = -int(num)
+            # new_rxn[compound] = -int(num)
         for idx,prod in enumerate(prod_wth_stoich):
             stoich = re.split(' ',prod.strip())
             prod_name_stoich = re.split(' ',prod_names_wth_stoich[idx].strip())
             if len(stoich) == 1:
                 metabolite = Metabolite(id=stoich[0],name=prod_name_stoich[0])
-                compound = cc.get_compound(compound_id='kegg'+str(stoich[0]))
+                # compound = cc.get_compound(compound_id='kegg'+str(stoich[0]))
                 num = 1
             elif len(stoich) == 2:
                 metabolite = Metabolite(id=stoich[1],name=prod_name_stoich[1])
-                compound = cc.get_compound(compound_id='kegg'+str(stoich[1]))
-                num = stoich[0].replace('n','')
+                # compound = cc.get_compound(compound_id='kegg'+str(stoich[1]))
+                num = stoich[0].replace('n+','').replace('n','').replace('(','').replace(')','')
                 if num == '': num = '1'
             new_stoich[metabolite] = int(num)
-            new_rxn[compound] = int(num)
+            # new_rxn[compound] = int(num)
 
-        return [new_stoich,Reaction(new_rxn)]
+        return [new_stoich]

@@ -8,18 +8,29 @@ class MPNG_Metabolite:
     # MW
     # reactions
 
-    def __init__(self,entry:str,names:list[str],formula:str,MW:float,reactions:list[str],bonds:dict[str,int]):
+    def __init__(self,entry:str,names:list[str],formula:str,MW:float,reactions:list[str]):
         self.__entry = entry
         self.__names = names
         self.__formula = formula
         self.__MW = MW
         self.__reactions = reactions
-        self.__bonds = bonds
+        # self.__BRITE = brite
+
+        # ,bonds:dict[str,int]
+        # self.__bonds = bonds
 
         self.__bond_energy_dict = {}
 
         self.__conc = 0
         self.__explored = False
+
+        # self.__brite_to_generic_dict = {
+            
+        # }
+        # self.__generic_compound_entries = []
+        # for brite_entry in self.__BRITE:
+        #     self.__generic_compound_entries.append(self.__brite_to_generic_dict[brite_entry])
+
 
     @property
     def entry(self) -> str:

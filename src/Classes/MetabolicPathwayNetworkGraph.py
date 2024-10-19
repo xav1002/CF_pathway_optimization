@@ -32,9 +32,9 @@ class MetabolicPathwayNetworkGraph:
             'FADH2': 0, 'FAD': 0
         }
 
-        self.common_metabolites = []
+        self.common_metabolites = ['C00138','C00139','C00080','C00024']
         for x in range(14):
-            if x < 10:
+            if x < 9:
                 zeros = '0000'
             else:
                 zeros = '000'

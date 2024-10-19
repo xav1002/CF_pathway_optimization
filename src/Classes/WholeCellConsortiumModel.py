@@ -2,6 +2,7 @@ import sys
 sys.path.append('../../Lib')
 from pyvis.network import Network
 import networkx as nx
+import traceback
 
 from MetabolicPathwayNetworkGraph import MetabolicPathwayNetworkGraph
 from MicrobialConsortiumKineticModel import MicrobialConsortiumKineticModel
@@ -15,7 +16,14 @@ from MPNG_Enzyme import MPNG_Enzyme
 class WholeCellConsortiumModel:
 
     def __init__(self):
-        # self.MPNG = MetabolicPathwayNetworkGraph()
+        self.common_metabolite_names = ['C00138','C00139','C00080','C00024']
+        for x in range(14):
+            if x < 9:
+                zeros = '0000'
+            else:
+                zeros = '000'
+            self.common_metabolite_names.append('C'+zeros+str(x+1))
+        [self.common_metabolites,[],[]] = parse_KEGG(self.common_metabolite_names)
         return
 
     @property
@@ -84,13 +92,13 @@ class WholeCellConsortiumModel:
         # Task 4: visualize results
 
     def grow_graph_test(self) -> None:
-        [root,[],[]] = parse_KEGG(['C00058'])
+        [root,[],[]] = parse_KEGG(['C00024'])
         print(root[0].entry)
 
         graph = MetabolicPathwayNetworkGraph('test_graph_root_'+root[0].names[0],root)
 
         lvl_ct = 0
-        max_lvls = 2
+        max_lvls = 8
         while lvl_ct < max_lvls:
             # grow graph
             graph = self.__grow_graph(graph)
@@ -99,16 +107,16 @@ class WholeCellConsortiumModel:
             lvl_ct += 1
             print("Level "+str(lvl_ct)+" completed.")
 
-        net = Network(notebook=True,cdn_resources="local",width="100%",height="600px")
-        net.from_nx(graph.NX_Graph)
-        for node in net.nodes:
-            n_id = node['id']
-            node['label'] = graph.get_metabolite_by_entry(n_id).names[0]
-            node['size'] = 20
-            node['shape'] = 'image'
-            node['image'] = 'https://rest.kegg.jp/get/'+n_id+'/image'
+        # net = Network(notebook=True,cdn_resources="local",width="100%",height="600px")
+        # net.from_nx(graph.NX_Graph)
+        # for node in net.nodes:
+        #     n_id = node['id']
+        #     node['label'] = graph.get_metabolite_by_entry(n_id).names[0]
+        #     node['size'] = 20
+        #     node['shape'] = 'image'
+        #     node['image'] = 'https://rest.kegg.jp/get/'+n_id+'/image'
 
-        net.show('test.html',local=True,notebook=False)
+        # net.show('test.html',local=True,notebook=False)
 
         return graph
 
@@ -123,21 +131,34 @@ class WholeCellConsortiumModel:
 
     def __grow_graph(self,graph:MetabolicPathwayNetworkGraph) -> MetabolicPathwayNetworkGraph:
         for leaf in graph.leaf_metabolites:
+            # try:
             print("leaf:",leaf)
             # query all reactions for given leaf metabolite
+            print(leaf.reactions)
             [[],rxns,[]] = parse_KEGG(leaf.reactions)
 
             for rxn in rxns:
                 # instantiating new MPNG_Metabolites based on list in MPNG_Reaction
+                print(list(rxn.stoich.keys()))
                 metabolite_names: list[str] = list(map(lambda x: x.id,list(rxn.stoich.keys())))
-                [metabolites,[],[]] = parse_KEGG(metabolite_names)
-                # adding new reactions to graph
-                graph.add_reaction(rxn,metabolites)
+                print(metabolite_names)
+                common_metabolites_in_rxn: list[str] = []
+                for meta in self.common_metabolite_names:
+                    if meta in metabolite_names:
+                        metabolite_names.remove(meta)
+                        common_metabolites_in_rxn.append(meta)
+
+                if len(metabolite_names) > 0: [metabolites,[],[]] = parse_KEGG(metabolite_names)
+                # STARTHERE: need to better define list of common metabolites
+                graph.add_reaction(rxn,metabolites+[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])
 
             leaf.explored = True
 
-        graph.update_explored_leaves()
-
+            graph.update_explored_leaves()
+            # except Exception:
+            #     print(traceback.format_exc())
+            #     continue
+            
         return graph
 
     def __combine_graphs(self,graph1:MetabolicPathwayNetworkGraph,graph2:MetabolicPathwayNetworkGraph):
