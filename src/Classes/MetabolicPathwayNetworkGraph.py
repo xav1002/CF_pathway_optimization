@@ -5,23 +5,26 @@ sys.path.append('../Classes/Components')
 sys.path.append('../../Lib')
 
 import numpy as np
-from cobra import Model, Reaction, Metabolite
+import pandas as pd
+from cobra import Model, Reaction, Metabolite, Solution
 import networkx as nx
 
 from MPNG_Metabolite import MPNG_Metabolite
 from MPNG_Reaction import MPNG_Reaction
 
 class MetabolicPathwayNetworkGraph:
-    def __init__(self,name:str,root_metabolite:MPNG_Metabolite) -> None:
+    def __init__(self,name:str,root_metabolites:list[MPNG_Metabolite]) -> None:
         self.__name = name
-        self.__root_metabolite = root_metabolite
-        self.__leaf_metabolites = root_metabolite
+        self.__root_metabolite = root_metabolites
+        self.__leaf_metabolites = root_metabolites
+        self.__temp_leaves = []
         self.__metabolites: dict[MPNG_Metabolite] = {}
         self.__reactions: dict[MPNG_Reaction] = {}
 
         self.__COBRA_model: Model = Model(name+'_cobra')
         # self.__NX_Graph: nx.Graph = nx.Graph(name+'_nx')
-        self.__NX_Graph: nx.Graph = nx.Graph()
+        self.__vis_Graph: nx.Graph = nx.DiGraph()
+        self.__path_Graph: nx.DiGraph = nx.DiGraph()
 
         self.__temperature = 303.15 # K
         self.__pH = 7
@@ -53,12 +56,20 @@ class MetabolicPathwayNetworkGraph:
         self.__COBRA_model = new_model
 
     @property
-    def NX_Graph(self) -> nx.Graph:
-        return self.__NX_Graph
+    def vis_Graph(self) -> nx.DiGraph:
+        return self.__vis_Graph
 
-    @NX_Graph.setter
-    def NX_Graph(self,new_graph:nx.Graph) -> None:
-        self.__NX_Graph = new_graph
+    @vis_Graph.setter
+    def vis_Graph(self,new_graph:nx.DiGraph) -> None:
+        self.__vis_Graph = new_graph
+
+    @property
+    def path_Graph(self) -> nx.DiGraph:
+        return self.__path_Graph
+
+    @path_Graph.setter
+    def path_Graph(self,new_graph:nx.DiGraph) -> None:
+        self.__path_Graph = new_graph
 
     @property
     def root_metabolite(self) -> MPNG_Metabolite:
@@ -135,40 +146,53 @@ class MetabolicPathwayNetworkGraph:
         reaction.add_metabolites(new_reaction.stoich)
         self.COBRA_model.add_reactions([reaction])
 
-    def add_reaction(self,new_reaction:MPNG_Reaction,new_metabolites:list[MPNG_Metabolite]) -> None:
+    def add_reaction(self,new_reaction:MPNG_Reaction,leaf:MPNG_Metabolite,new_metabolites:list[MPNG_Metabolite]) -> None:
         # add MPNG_Reaction to MPNG
         self.reactions = new_reaction
         # add to NX Graph
-        old_leaves: list[MPNG_Metabolite] = []
-        new_leaves: list[MPNG_Metabolite] = []
+        new_leaves: list[str] = []
+        old_leaves: list[str] = []
         stoich: dict[Metabolite,int] = new_reaction.stoich
         key_entries = list(map(lambda x: x.id,list(stoich.keys())))
+        leaf_is_substrate = True if stoich[list(stoich.keys())[key_entries.index(leaf.entry)]] < 0 else False
         new_metabolite_entries = list(map(lambda x: x.entry,new_metabolites))
+        print(new_reaction,new_reaction.enzyme_id)
         for idx,m in enumerate(new_metabolite_entries):
-            if m not in self.NX_Graph.nodes and m not in self.common_metabolites:
-                self.NX_Graph.add_node(m)
+            if m not in self.__vis_Graph.nodes and m not in self.common_metabolites:
+                self.__vis_Graph.add_node(m)
+                self.__path_Graph.add_node(m)
                 self.metabolites = new_metabolites[idx]
-            if stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
-                new_leaves.append(m)
-            elif stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
-                old_leaves.append(m)
-
-        for old_leaf in old_leaves:
-            for new_leaf in new_leaves:
-                self.NX_Graph.add_edge(old_leaf,new_leaf,
-                    f_stoich=stoich[list(stoich.keys())[key_entries.index(old_leaf)]],
-                    r_stoich=stoich[list(stoich.keys())[key_entries.index(new_leaf)]]
-                )
+                if len(new_metabolites[idx].reactions) < 100 and m not in self.common_metabolites:
+                    self.__temp_leaves.append(new_metabolites[idx])
+            if leaf_is_substrate:
+                if stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
+                    self.__vis_Graph.add_edge(new_reaction.enzyme_id[0],m,
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
+                elif stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
+                    self.__vis_Graph.add_edge(m,new_reaction.enzyme_id[0],
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
+            else:
+                if stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
+                    self.__vis_Graph.add_edge(new_reaction.enzyme_id[0],m,
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
+                elif stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
+                    self.__vis_Graph.add_edge(m,new_reaction.enzyme_id[0],
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
 
         # add to COBRA model
         self.__update_COBRA_model(new_reaction)
 
     def update_explored_leaves(self) -> None:
-        self.leaf_metabolites = []
-        for metabolite in self.metabolites.values():
-            if not metabolite.explored and len(metabolite.reactions) < 100 and metabolite.entry not in self.common_metabolites:
-                self.leaf_metabolites.append(metabolite)
-        # rank leaf_metabolites by individual metrics, calculate weighting, then determine composite optimal leaf_metabolites
+        self.leaf_metabolites = self.__temp_leaves
+        self.__temp_leaves = []
+        # for metabolite in self.metabolites.values():
+        #     if not metabolite.explored and len(metabolite.reactions) < 100 and metabolite.entry not in self.common_metabolites:
+        #         self.leaf_metabolites.append(metabolite)
+        # # rank leaf_metabolites by individual metrics, calculate weighting, then determine composite optimal leaf_metabolites
         for leaf in self.leaf_metabolites:
             # calculate weights for leaf_metabolites with respect to dGr
 
@@ -178,10 +202,6 @@ class MetabolicPathwayNetworkGraph:
 
             return
 
-    def flip_stoichiometry(self) -> None:
-        # flip the stoichiometry when a tree with root at end product needs to be integrated with tree with root at initial substrate
-        return
-
     def calc_dGr_explore_weight(self):
         return
 
@@ -189,4 +209,19 @@ class MetabolicPathwayNetworkGraph:
         return
 
     def calc_rxn_redox_explore_weight(self):
+        return
+
+    def find_shortest_paths(self,source:str,target:str) -> list[list[str]]:
+        return nx.all_shortest_paths(self.__vis_Graph,source=source,target=target)
+
+    def find_equilibrium_concentrations(self) -> None:
+        return
+
+    def find_unsteady_components(self) -> None:
+        return
+
+    def run_mass_balance(self) -> Solution:
+        return
+
+    def assess_enzyme_promiscuity(self) -> None:
         return

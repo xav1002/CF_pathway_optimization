@@ -107,27 +107,13 @@ class WholeCellConsortiumModel:
             lvl_ct += 1
             print("Level "+str(lvl_ct)+" completed.")
 
-        # net = Network(notebook=True,cdn_resources="local",width="100%",height="600px")
-        # net.from_nx(graph.NX_Graph)
-        # for node in net.nodes:
-        #     n_id = node['id']
-        #     node['label'] = graph.get_metabolite_by_entry(n_id).names[0]
-        #     node['size'] = 20
-        #     node['shape'] = 'image'
-        #     node['image'] = 'https://rest.kegg.jp/get/'+n_id+'/image'
-
-        # net.show('test.html',local=True,notebook=False)
+        self.__visualize_graph(graph)
 
         return graph
 
         # net = Network(notebook=False,cdn_resources="remote",width="100%",height="600px")
         # net.from_nx(graph.NX_Graph)
         # return net
-
-    def validate_pathway(self):
-        # check redox balance and optimized production of given pathway with constraint based model
-        # optimize based on thermodynamics
-        return
 
     def __grow_graph(self,graph:MetabolicPathwayNetworkGraph) -> MetabolicPathwayNetworkGraph:
         for leaf in graph.leaf_metabolites:
@@ -141,16 +127,22 @@ class WholeCellConsortiumModel:
                 # instantiating new MPNG_Metabolites based on list in MPNG_Reaction
                 print(list(rxn.stoich.keys()))
                 metabolite_names: list[str] = list(map(lambda x: x.id,list(rxn.stoich.keys())))
-                print(metabolite_names)
+                print('metabolite_names',metabolite_names)
+                print('rxn',rxn.entry)
                 common_metabolites_in_rxn: list[str] = []
                 for meta in self.common_metabolite_names:
                     if meta in metabolite_names:
                         metabolite_names.remove(meta)
                         common_metabolites_in_rxn.append(meta)
 
-                if len(metabolite_names) > 0: [metabolites,[],[]] = parse_KEGG(metabolite_names)
+                print('metabolite_names_2',metabolite_names)
+                if 'G' in ''.join(metabolite_names): continue
                 # STARTHERE: need to better define list of common metabolites
-                graph.add_reaction(rxn,metabolites+[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])
+                [metabolites,[],[]] = parse_KEGG(metabolite_names) if len(metabolite_names) > 0 else [[],[],[]]
+                print('test',list(map(lambda x: x.entry,metabolites+[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])))
+                print('test2',list(map(lambda x: x.entry,metabolites)))
+                print('test3',list(map(lambda x: x.entry,[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])))
+                graph.add_reaction(rxn,leaf,metabolites+[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])
 
             leaf.explored = True
 
@@ -161,12 +153,58 @@ class WholeCellConsortiumModel:
             
         return graph
 
-    def __combine_graphs(self,graph1:MetabolicPathwayNetworkGraph,graph2:MetabolicPathwayNetworkGraph):
-        # networkx compose()
+    def __calculate_graph_metrics(self) -> None:
         return
 
-    def __query_graph_details(self) -> None:
-        return
+    def __visualize_graph(self,graph:MetabolicPathwayNetworkGraph) -> None:
+        net = Network()
+        for idx,rxn in enumerate(graph.reactions):
+            flux_val = graph.cobra_sol.fluxes[rxn.id]
+            rxn_meta_names = list(map(lambda x: x.id, rxn.metabolites))
+            for edge in edges:
+                if round(flux_val) != 0 and '_accum' in rxn.id and edge['from'] in rxn_meta_names and '.' not in edge['to']: #and '.' not in edge['from'] and '.' not in edge['to']:
+                    edge['hidden'] = False
+                    edge['color'] = [1,0,0]
+                    edge['label'] = 'accum_f: '+str(int(flux_val))
+                elif round(flux_val) != 0 and ('.' in edge['from'] or '.' in edge['to']) and '_accum' not in rxn.id:
+                    if (edge['from'] in rxn_meta_names or edge['to'] in rxn_meta_names) and (edge['from'] == [KPA_rxn.enzyme_id[0] for KPA_rxn in KPA_rxns if KPA_rxn.entry == rxn.id][0] or edge['to'] == [KPA_rxn.enzyme_id[0] for KPA_rxn in KPA_rxns if KPA_rxn.entry == rxn.id][0]):
+                        edge['hidden'] = False
+                        edge['label'] = 'rxn_f: '+str(int(edge['stoich']*flux_val))
 
-    def __visualize_graph(self) -> None:
+            # adding edges to slim graph
+            if round(flux_val) != 0:
+                if len([KPA_rxn for KPA_rxn in KPA_rxns if KPA_rxn.entry == rxn.id]) == 0:
+                    break
+                KPA_rxn = [KPA_rxn for KPA_rxn in KPA_rxns if KPA_rxn.entry == rxn.id][0]
+                if KPA_rxn.enzyme_id[0] in net_slim.get_nodes():
+                    net_slim.get_node(KPA_rxn.enzyme_id[0])['label'] = net_slim.get_node(KPA_rxn.enzyme_id[0])['label']+str('; enz_f: '+str(round(abs(flux_val))))
+                else:
+                    net_slim.add_node(KPA_rxn.enzyme_id[0],KPA_rxn.enzyme_id[0]+'; enz_f: '+str(round(abs(flux_val))),shape='box')
+                for meta in list(rxn.metabolites.keys()):
+                    if meta.id in common_metabolites:
+                        net_slim.add_node(meta.id+'_'+str(idx),[metabolite.names[0] for metabolite in metabolites if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
+                    else:
+                        net_slim.add_node(meta.id,[metabolite.names[0] for metabolite in metabolites if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
+                    if rxn.metabolites[meta] < 0:
+                        arrow_dir = 'to' if round(flux_val) > 0 else 'from'
+                        if meta.id in common_metabolites:
+                            net_slim.add_edge(meta.id+'_'+str(idx),KPA_rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                        else:
+                            net_slim.add_edge(meta.id,KPA_rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                    elif rxn.metabolites[meta] > 0:
+                        arrow_dir = 'to' if round(flux_val) > 0 else 'from'
+                        if meta.id in common_metabolites:
+                            net_slim.add_edge(KPA_rxn.enzyme_id[0],meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                        else:
+                            net_slim.add_edge(KPA_rxn.enzyme_id[0],meta.id,label='rxn_f: '+str(int(abs(rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+
+        net.options.physics.enabled = False
+        net.layout = True
+        net.show_buttons()
+        net.show('hexanoic_acid_KPA.html',local=True,notebook=False)
+
+        net_slim.layout = False
+        net_slim.options.physics.enabled = True
+        net_slim.show_buttons()
+        net_slim.show('hexanoic_acid_KPA_slim.html',local=True,notebook=False)
         return
