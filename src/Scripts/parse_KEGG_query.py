@@ -18,7 +18,6 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
         else:
             query_type = 'E'
 
-    print('query_type',query_type)
     metabolites: list = []
     reactions: list = []
     enzymes: list = []
@@ -96,6 +95,12 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                             category = ""
                         elif line_level_1.startswith("BOND"):
                             category = ""
+                        elif line_level_1.startswith("PATHWAY"):
+                            category = ""
+                        elif line_level_1.startswith("DBLINKS"):
+                            category = ""
+                        elif line_level_1.startswith("NETWORK"):
+                            category = ""
 
                         if not line_level_1.startswith("/"):
                             if category == "ENTRY":
@@ -134,6 +139,10 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                             category = "ENZYME"
                         elif line_level_1.startswith("PATHWAY"):
                             category = ""
+                        elif line_level_1.startswith("DBLINKS"):
+                            category = ""
+                        elif line_level_1.startswith("NETWORK"):
+                            category = ""
 
                         if not line_level_1.startswith("/"):
                             if category == "ENTRY":
@@ -168,12 +177,20 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                         elif line_level_1.startswith("SYSNAME"):
                             category = "SYSNAME"
                         elif line_level_1.startswith("REACTION"):
+                            category = ""
+                        elif line_level_1.startswith("ALL_REAC"):
                             category = "REACTION"
                         elif line_level_1.startswith("SUBSTRATE"):
                             category = "SUBSTRATE"
                         elif line_level_1.startswith("PRODUCT"):
                             category = "PRODUCT"
                         elif line_level_1.startswith("COMMENT"):
+                            category = ""
+                        elif line_level_1.startswith("PATHWAY"):
+                            category = ""
+                        elif line_level_1.startswith("DBLINKS"):
+                            category = ""
+                        elif line_level_1.startswith("NETWORK"):
                             category = ""
 
                         if not line_level_1.startswith("/"):

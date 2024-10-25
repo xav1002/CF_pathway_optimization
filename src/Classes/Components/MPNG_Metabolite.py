@@ -1,4 +1,5 @@
 from periodictable import *
+import json
 
 class MPNG_Metabolite:
 
@@ -73,3 +74,19 @@ class MPNG_Metabolite:
     @explored.setter
     def explored(self,new_val:bool) -> None:
         self.__explored = new_val
+
+    def toJSON(self):
+        return json.dumps({
+                    'entry':self.__entry,
+                    'names':self.__names,
+                    'formula':self.__formula,
+                    'MW':self.__MW,
+                    'reactions':self.__reactions,
+                    # 'conc':self.__conc,
+                    # 'explored':self.__explored
+                })
+
+    def fromJSON(dict_from_json:dict):
+        meta = MPNG_Metabolite(dict_from_json['entry'],dict_from_json['names'],
+                               dict_from_json['formula'],dict_from_json['MW'],dict_from_json['reactions'],)
+        return meta

@@ -2,6 +2,7 @@ from periodictable import *
 import re
 
 from cobra import Metabolite
+import json
 from equilibrator_api import ComponentContribution, Reaction
 
 from MPNG_Metabolite import MPNG_Metabolite
@@ -19,14 +20,18 @@ class MPNG_Reaction:
     # Enzyme
 
     def __init__(self,entry,names,definition,equation,enzyme_id) -> None:
-        self.entry = entry
-        self.names = names
-        self.definition = definition
-        self.equation = equation
-        self.enzyme_id = enzyme_id
+        self.__entry = entry
+        self.__names = names
+        self.__definition = definition
+        self.__equation = equation
+        self.__enzyme_id = enzyme_id
 
         [self.__stoich] = self.parse_equation()
         # self.__dGr_prime = cc.dg_prime(self.__equil_rxn)
+
+    @property
+    def entry(self) -> str:
+        return self.__entry
 
     @property
     def metabolites(self) -> list[MPNG_Metabolite]:
@@ -60,14 +65,13 @@ class MPNG_Reaction:
     def set_Enzyme(self) -> None:
         self.enzyme = MPNG_Enzyme()
 
-    # @getattr
-    def get_Enzyme_ID(self) -> str:
-        return self.enzyme_id
+    @property
+    def enzyme_id(self) -> str:
+        return self.__enzyme_id
 
     def parse_equation(self) -> dict:
-        print(self.equation)
-        [sub_str,prod_str] = re.split('<=>',self.equation)
-        [sub_names,prod_names] = re.split('<=>',self.definition)
+        [sub_str,prod_str] = re.split('<=>',self.__equation)
+        [sub_names,prod_names] = re.split('<=>',self.__definition)
 
         subs_wth_stoich = re.split(' \\+ ',sub_str)
         prod_wth_stoich = re.split(' \\+ ',prod_str)
@@ -107,3 +111,19 @@ class MPNG_Reaction:
             # new_rxn[compound] = int(num)
 
         return [new_stoich]
+
+    def toJSON(self):
+        return json.dumps({
+                    'entry':self.__entry,
+                    'names':self.__names,
+                    'definition':self.__definition,
+                    'equation':self.__equation,
+                    'enzyme_id':self.__enzyme_id,
+                    # 'conc':self.__conc,
+                    # 'explored':self.__explored
+                })
+
+    def fromJSON(dict_from_json):
+        rxn = MPNG_Reaction(dict_from_json['entry'],dict_from_json['names'],
+                               dict_from_json['definition'],dict_from_json['equation'],dict_from_json['enzyme_id'],)
+        return rxn
