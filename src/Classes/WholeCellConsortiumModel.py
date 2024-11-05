@@ -43,11 +43,11 @@ class WholeCellConsortiumModel:
                 self.__enzymes[new_meta.entry] = new_enz
         print('number of metabolites: ',len(list(self.__metabolites.keys())))
 
-        self.__common_metabolite_names = ['C00138','C00139','C00080','C00024']
+        self.__common_metabolite_entries = ['C00138','C00139','C00080','C00024']
         for x in range(14):
             zeros = '0'*(5-len(str(x+1)))
-            self.__common_metabolite_names.append('C'+zeros+str(x+1))
-        self.common_metabolites = self.__get_metabolites(entries=self.__common_metabolite_names)
+            self.__common_metabolite_entries.append('C'+zeros+str(x+1))
+        self.common_metabolites = self.__get_metabolites(entries=self.__common_metabolite_entries)
         print('common',self.common_metabolites)
 
         self.__graphs: dict[str,MetabolicPathwayNetworkGraph] = {}
@@ -122,8 +122,10 @@ class WholeCellConsortiumModel:
         self.__graphs[network_name] = MetabolicPathwayNetworkGraph(network_name,roots)
 
         lvl_ct = 0
-        max_lvls = 8
-        while lvl_ct < max_lvls:
+        max_lvls = 15
+        path_ct = 0
+        target_path_ct = 3
+        while lvl_ct < max_lvls and path_ct < target_path_ct:
             # grow graph
             self.__graphs[network_name] = self.__grow_graph(self.__graphs[network_name])
             # check for overlap with other graphs
@@ -131,9 +133,7 @@ class WholeCellConsortiumModel:
             lvl_ct += 1
             print("Level "+str(lvl_ct)+" completed.")
 
-            print('test',target_metabolite_entries)
-            print('test2',self.__graphs[network_name].get_metabolites('all'))
-            if all(target_meta in list(map(lambda x: x.entry,self.__graphs[network_name].get_metabolites('all'))) for target_meta in target_metabolite_entries): break
+            if all(target_meta in list(map(lambda x: x.entry,self.__graphs[network_name].get_metabolites('all'))) for target_meta in target_metabolite_entries): path_ct += 1
 
         # Task 2: implement thermodynamic feasibility constraints
 
@@ -155,6 +155,10 @@ class WholeCellConsortiumModel:
         # net.from_nx(graph.NX_Graph)
         # return net
 
+    def prune_graph(self,network_name:str,objective_meta_entry:str,src_meta_entries:list[str]):
+        self.__graphs[network_name].prune_graph(objective_meta_entry,src_meta_entries)
+        return self.__graphs[network_name]
+
     def __grow_graph(self,graph:MetabolicPathwayNetworkGraph) -> MetabolicPathwayNetworkGraph:
         print('leaves length',len(graph.leaf_metabolites))
         for idx,leaf in enumerate(graph.leaf_metabolites):
@@ -167,11 +171,11 @@ class WholeCellConsortiumModel:
                 if rxn.entry not in list(map(lambda x: x.id,graph.COBRA_model.reactions)):
                     # instantiating new MPNG_Metabolites based on list in MPNG_Reaction
                     metabolite_names: list[str] = list(map(lambda x: x.id,list(rxn.stoich.keys())))
-                    common_metabolites_in_rxn: list[str] = []
-                    for meta in self.__common_metabolite_names:
-                        if meta in metabolite_names:
-                            metabolite_names.remove(meta)
-                            common_metabolites_in_rxn.append(meta)
+                    # common_metabolites_in_rxn: list[str] = []
+                    # for meta in self.__common_metabolite_entries:
+                    #     if meta in metabolite_names:
+                    #         metabolite_names.remove(meta)
+                    #         common_metabolites_in_rxn.append(meta)
 
                     all_meta_names = ''.join(metabolite_names)
                     if ('G' in all_meta_names) or ('(' in all_meta_names): continue
@@ -180,7 +184,10 @@ class WholeCellConsortiumModel:
                     # print('test',list(map(lambda x: x.entry,metabolites+[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])))
                     # print('test2',list(map(lambda x: x.entry,metabolites)))
                     # print('test3',list(map(lambda x: x.entry,[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])))
-                    graph.add_reaction(rxn,leaf,metabolites+[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])
+                    try:
+                        graph.add_reaction(rxn,leaf,metabolites)
+                    except Exception as e:
+                        print(e)
 
             leaf.explored = True
 
@@ -198,7 +205,7 @@ class WholeCellConsortiumModel:
 
     def visualize_graph(self,network_name:str) -> None:
         MPNG_net = self.__graphs[network_name]
-        MPNG_net.vis_Graph = Network()
+        MPNG_net.vis_Network = Network()
         for idx,co_rxn in enumerate(MPNG_net.COBRA_model.reactions):
             flux_val = MPNG_net.mass_balance_sln.fluxes[co_rxn.id]
             # adding edges to slim graph
@@ -206,30 +213,30 @@ class WholeCellConsortiumModel:
                 if len([rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id]) == 0:
                     break
                 rxn = [rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id][0]
-                if rxn.enzyme_id[0] in MPNG_net.vis_Graph.get_nodes():
-                    MPNG_net.vis_Graph.get_node(rxn.enzyme_id[0])['label'] = MPNG_net.vis_Graph.get_node(rxn.enzyme_id[0])['label']+str('; enz_f: '+str(round(abs(flux_val))))
+                if rxn.enzyme_id[0] in MPNG_net.vis_Network.get_nodes():
+                    MPNG_net.vis_Network.get_node(rxn.enzyme_id[0])['label'] = MPNG_net.vis_Network.get_node(rxn.enzyme_id[0])['label']+str('; enz_f: '+str(round(abs(flux_val))))
                 else:
-                    MPNG_net.vis_Graph.add_node(rxn.enzyme_id[0],rxn.enzyme_id[0]+'; enz_f: '+str(round(abs(flux_val))),shape='box')
+                    MPNG_net.vis_Network.add_node(rxn.enzyme_id[0],rxn.enzyme_id[0]+'; enz_f: '+str(round(abs(flux_val))),shape='box')
                 for meta in list(co_rxn.metabolites.keys()):
                     if meta.id in self.common_metabolites:
-                        MPNG_net.vis_Graph.add_node(meta.id+'_'+str(idx),[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
+                        MPNG_net.vis_Network.add_node(meta.id+'_'+str(idx),[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
                     else:
-                        MPNG_net.vis_Graph.add_node(meta.id,[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
+                        MPNG_net.vis_Network.add_node(meta.id,[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
                     if co_rxn.metabolites[meta] < 0:
                         arrow_dir = 'to' if round(flux_val) > 0 else 'from'
                         if meta.id in self.common_metabolites:
-                            MPNG_net.vis_Graph.add_edge(meta.id+'_'+str(idx),rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                            MPNG_net.vis_Network.add_edge(meta.id+'_'+str(idx),rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
                         else:
-                            MPNG_net.vis_Graph.add_edge(meta.id,rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                            MPNG_net.vis_Network.add_edge(meta.id,rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
                     elif co_rxn.metabolites[meta] > 0:
                         arrow_dir = 'to' if round(flux_val) > 0 else 'from'
                         if meta.id in self.common_metabolites:
-                            MPNG_net.vis_Graph.add_edge(rxn.enzyme_id[0],meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                            MPNG_net.vis_Network.add_edge(rxn.enzyme_id[0],meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
                         else:
-                            MPNG_net.vis_Graph.add_edge(rxn.enzyme_id[0],meta.id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                            MPNG_net.vis_Network.add_edge(rxn.enzyme_id[0],meta.id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
 
-        MPNG_net.vis_Graph.layout = False
-        MPNG_net.vis_Graph.options.physics.enabled = True
-        MPNG_net.vis_Graph.show_buttons()
-        MPNG_net.vis_Graph.show(network_name+'_slim.html',local=True,notebook=False)
+        MPNG_net.vis_Network.layout = False
+        MPNG_net.vis_Network.options.physics.enabled = True
+        MPNG_net.vis_Network.show_buttons()
+        MPNG_net.vis_Network.show(network_name+'_slim.html',local=True,notebook=False)
         return
