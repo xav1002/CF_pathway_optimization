@@ -156,7 +156,7 @@ class WholeCellConsortiumModel:
         # return net
 
     def prune_graph(self,network_name:str,objective_meta_entry:str,src_meta_entries:list[str]):
-        self.__graphs[network_name].prune_graph(objective_meta_entry,src_meta_entries)
+        self.__graphs[network_name].prune_graph(objective_meta_entry,src_meta_entries,self.__metabolites,self.__reactions)
         return self.__graphs[network_name]
 
     def __grow_graph(self,graph:MetabolicPathwayNetworkGraph) -> MetabolicPathwayNetworkGraph:
@@ -197,7 +197,7 @@ class WholeCellConsortiumModel:
 
     def calculate_graph_metrics(self,network_name:str,objective_meta_entry:str,boundary_metabolite_entries:list[str],
                                 root_metabolite_entries:list[str],target_metabolite_entries:list[str]) -> None:
-        self.__graphs[network_name].run_mass_balance(objective_meta_entry,boundary_metabolite_entries)
+        self.__graphs[network_name].run_mass_balance(objective_meta_entry,boundary_metabolite_entries,self.__metabolites,self.__reactions)
 
         # shortest_paths = self.__graph[network_name].find_shortest_paths(root_metabolite_entries,target_metabolite_entries)
 

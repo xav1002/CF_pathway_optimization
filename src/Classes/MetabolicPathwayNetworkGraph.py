@@ -44,7 +44,7 @@ class MetabolicPathwayNetworkGraph:
         for x in range(14):
             zeros = '0'*(5-len(str(x+1)))
             self.__common_metabolite_entries.append('C'+zeros+str(x+1))
-        self.__common_metabolites = self.get_metabolites(self.__common_metabolite_entries)
+        # self.__common_metabolites = self.get_metabolites(self.__common_metabolite_entries)
 
     @property
     def name(self) -> str:
@@ -102,23 +102,28 @@ class MetabolicPathwayNetworkGraph:
     def metabolites(self,new_metabolites:MPNG_Metabolite|list[MPNG_Metabolite]|list) -> None:
         if type(new_metabolites) is MPNG_Metabolite:
             self.__metabolites[str(new_metabolites.entry)] = new_metabolites
-        elif type(new_metabolites) is list[MPNG_Metabolite]:
+        elif type(new_metabolites) is list:
             self.__metabolites = {}
             for m in new_metabolites:
                 self.__metabolites[str(m.entry)] = m
         elif type(new_metabolites) is list and new_metabolites == []:
             self.__metabolites = {}
 
-    def get_metabolites(self,entries:str|list[str]) -> MPNG_Metabolite | list[MPNG_Metabolite]:
+    def remove_meta_by_entry(self,entries:list[str]) -> None:
+        for x in entries:
+            del self.__metabolites[x]
+
+    def get_metabolites(self,entries:str|list) -> MPNG_Metabolite | list[MPNG_Metabolite]:
         if type(entries) == str:
             if entries == 'all':
                 return list(self.__metabolites.values())
             else:
                 return self.__metabolites[entries]
-        elif type(entries) == list[str]:
+        elif type(entries) == list:
             metas = []
             for x in entries:
                 metas.append(self.__metabolites[x])
+            return metas
         else:
             return []
 
@@ -127,26 +132,33 @@ class MetabolicPathwayNetworkGraph:
         return self.__reactions
 
     @reactions.setter
-    def reactions(self,new_reactions:MPNG_Reaction|list[MPNG_Reaction]|list) -> None:
+    def reactions(self,new_reactions:MPNG_Reaction|list) -> None:
         if type(new_reactions) is MPNG_Reaction:
             self.__reactions[str(new_reactions.entry)] = new_reactions
-        elif type(new_reactions) is list[MPNG_Reaction]:
+        elif type(new_reactions) is list:
             self.__reactions = {}
             for r in new_reactions:
                 self.__reactions[str(r.entry)] = r
         elif type(new_reactions) is list and new_reactions == []:
             self.__reactions = {}
 
-    def get_reactions(self,entries:str|list[str]) -> MPNG_Reaction | list[MPNG_Reaction]:
+    def remove_rxns_by_entry(self,entries:list[str]) -> None:
+        for x in entries:
+            del self.__reactions[x]
+
+    def get_reactions(self,entries:str|list) -> MPNG_Reaction | list[MPNG_Reaction]:
         if type(entries) == str:
             if entries == 'all':
                 return list(self.__reactions.values())
             else:
                 return self.__reactions[entries]
-        elif type(entries) == list[str]:
+        elif type(entries) == list:
             rxns = []
+            # print('testest',entries)
             for x in entries:
+                # print('testest2',self.__reactions[x])
                 rxns.append(self.__reactions[x])
+            return rxns
         else:
             return []
 
@@ -158,20 +170,20 @@ class MetabolicPathwayNetworkGraph:
     def enzymes(self,new_enzymes:MPNG_Enzyme|list[MPNG_Enzyme]|list) -> None:
         if type(new_enzymes) is MPNG_Enzyme:
             self.__enzymes[str(new_enzymes.entry)] = new_enzymes
-        elif type(new_enzymes) is list[MPNG_Enzyme]:
+        elif type(new_enzymes) is list:
             self.__enzymes = {}
             for r in new_enzymes:
                 self.__enzymes[str(r.entry)] = r
         elif type(new_enzymes) is list and new_enzymes == []:
             self.__enzymes = {}
 
-    def get_enzymes(self,entries:str|list[str]) -> MPNG_Enzyme | list[MPNG_Enzyme]:
+    def get_enzymes(self,entries:str|list) -> MPNG_Enzyme | list[MPNG_Enzyme]:
         if type(entries) == str:
             if entries == 'all':
                 return list(self.__enzymes.values())
             else:
                 return self.__enzymes[entries]
-        elif type(entries) == list[str]:
+        elif type(entries) == list:
             enz = []
             for x in entries:
                 enz.append(self.__enzymes[x])
@@ -211,9 +223,9 @@ class MetabolicPathwayNetworkGraph:
     def add_reaction(self,new_reaction:MPNG_Reaction,leaf:MPNG_Metabolite,new_metabolites:list[MPNG_Metabolite]) -> None:
         # add MPNG_Reaction to MPNG
         self.reactions = new_reaction
-        rxn_number = new_reaction.enzyme_id[0]+'_'+str(len(self.__reactions.keys()))
+        rxn_number = new_reaction.enzyme_id[0]+':'+new_reaction.entry+'_'+str(len(self.__reactions.keys()))
         # add to NX Graph
-        self.__vis_Graph.add_node(node_for_adding=new_reaction.enzyme_id[0],id=len(self.__vis_Graph.nodes))
+        self.__vis_Graph.add_node(node_for_adding=new_reaction.entry,id=len(self.__vis_Graph.nodes))
         # self.__path_Graph.add_node(node_for_adding=new_reaction.enzyme_id[0],id=len(self.__path_Graph.nodes))
 
         stoich: dict[Metabolite,int] = new_reaction.stoich
@@ -229,7 +241,7 @@ class MetabolicPathwayNetworkGraph:
                     self.__temp_leaves.append(new_metabolites[idx])
             if leaf_is_substrate:
                 if stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
-                    self.__vis_Graph.add_edge(new_reaction.enzyme_id[0],m,
+                    self.__vis_Graph.add_edge(new_reaction.entry,m,
                         stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
                     )
                     if m not in self.__common_metabolite_entries:
@@ -237,7 +249,7 @@ class MetabolicPathwayNetworkGraph:
                             stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
                         )
                 elif stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
-                    self.__vis_Graph.add_edge(m,new_reaction.enzyme_id[0],
+                    self.__vis_Graph.add_edge(m,new_reaction.entry,
                         stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
                     )
                     if m not in self.__common_metabolite_entries:
@@ -246,7 +258,7 @@ class MetabolicPathwayNetworkGraph:
                         )
             else:
                 if stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
-                    self.__vis_Graph.add_edge(new_reaction.enzyme_id[0],m,
+                    self.__vis_Graph.add_edge(new_reaction.entry,m,
                         stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
                     )
                     if m not in self.__common_metabolite_entries:
@@ -254,7 +266,7 @@ class MetabolicPathwayNetworkGraph:
                             stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
                         )
                 elif stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
-                    self.__vis_Graph.add_edge(m,new_reaction.enzyme_id[0],
+                    self.__vis_Graph.add_edge(m,new_reaction.entry,
                         stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
                     )
                     if m not in self.__common_metabolite_entries:
@@ -263,7 +275,7 @@ class MetabolicPathwayNetworkGraph:
                         )
 
         # add to COBRA model
-        self.__update_COBRA_model(new_reaction)
+        # self.__update_COBRA_model(new_reaction)
 
     def update_explored_leaves(self) -> None:
         self.leaf_metabolites = self.__temp_leaves
@@ -293,91 +305,221 @@ class MetabolicPathwayNetworkGraph:
     def find_equilibrium_concentrations(self) -> None:
         return
 
-    def prune_graph(self,objective_meta_entry:str,src_metas_entries:list[str]):
+    def prune_graph(self,objective_meta_entry:str,src_metas_entries:list[str],all_metas:dict[str,MPNG_Metabolite],all_rxns:dict[str,MPNG_Reaction]):
         paths = {}
-        shortest_paths = []
+        shortest_paths_rxn = []
         for src in src_metas_entries:
-            # print('test189',[x for x in nx.all_shortest_paths(self.__path_Graph,source=src,target=objective_meta_entry)])
-            raw_paths = [x for x in nx.all_shortest_paths(self.__path_Graph,source=src,target=objective_meta_entry)]
-            for idx,raw in enumerate(raw_paths):
-                print('test193',raw)
-                raw_paths[idx] = list(map(lambda x: re.split('_',x)[0], raw))
-                print('test190',raw_paths)
-            shortest_paths.append(raw_paths)
+            # # print('test189',[x for x in nx.all_shortest_paths(self.__path_Graph,source=src,target=objective_meta_entry)])
+            raw_paths_rxn = [x for x in nx.all_shortest_paths(self.__path_Graph,source=src,target=objective_meta_entry)]
+            for idx,raw in enumerate(raw_paths_rxn):
+                for idx_2,x in enumerate(raw):
+                    if ':' in x:
+                        raw_paths_rxn[idx][idx_2] = re.split(':',re.split('_',x)[0])[1]
+                    else:
+                        raw_paths_rxn[idx][idx_2] = x
+            shortest_paths_rxn.append(raw_paths_rxn)
 
-        shortest_path_metas_and_rxns = shortest_paths[0][0]
+        shortest_path_metas_and_rxn = shortest_paths_rxn[0][0]
 
         # remove metabolites from self.__vis_Graph
         # STARTHERE: keep all metabolites involved in reactions on pathway
-        print('paths11',list(filter(lambda x: False if x in shortest_path_metas_and_rxns else True,list(self.__vis_Graph.nodes))))
-        print('paths12',shortest_path_metas_and_rxns)
-        shortest_path_nodes = list(filter(lambda x: False if x in shortest_path_metas_and_rxns else True,list(self.__vis_Graph.nodes)))
+        rxn_entries = list(filter(lambda x: 'R' in x,shortest_path_metas_and_rxn))
+        rxns = list(map(lambda x: all_rxns[x],rxn_entries))
+        central_nodes = []
+        for rxn in rxns:
+            central_nodes.append(rxn.entry)
+            for metas in list(map(lambda x: x.id,list(rxn.stoich.keys()))):
+                central_nodes.append(metas)
+        # print('paths12',shortest_path_metas_and_rxn)
+        # print('paths13',central_nodes)
+        shortest_path_nodes = list(filter(lambda x: x not in central_nodes,list(self.__vis_Graph.nodes)))
         self.__vis_Graph.remove_nodes_from(shortest_path_nodes)
-        print('paths3',list(self.__vis_Graph.nodes))
-        print('paths4',list(self.__vis_Graph.edges))
+        # print('paths3',list(self.__vis_Graph.nodes))
+        # print('paths4',list(self.__vis_Graph.edges))
+
+        # add reactions to COBRA model
+        # print('COBRA_feed2',list(filter(lambda x: 'R' in x, shortest_path_metas_and_rxn)))
+        # print('COBRA_feed',self.get_reactions(list(filter(lambda x: 'R' in x, shortest_path_metas_and_rxn))))
+        for rxn in self.get_reactions(list(filter(lambda x: 'R' in x, shortest_path_metas_and_rxn))):
+            # print('test91',rxn)
+            self.__update_COBRA_model(rxn)
+        # print('COBRA reactions',list(self.__COBRA_model.reactions))
 
         # remove metabolites (destrutively) from COBRA model
-        print('paths7',list(map(lambda z: z.id,self.__COBRA_model.metabolites)))
-        print('paths6',list(filter(lambda y: False if (y in shortest_path_metas_and_rxns) and ('C' in y) else True,list(map(lambda z: z.id,self.__COBRA_model.metabolites)))))
-        print('paths5',list(map(lambda x: self.__COBRA_model.metabolites.get_by_id(x),list(filter(lambda y: False if (y in shortest_path_metas_and_rxns) and ('C' in y) else True,list(map(lambda z: z.id,self.__COBRA_model.metabolites)))))))
-        self.__COBRA_model.remove_metabolites(list(map(lambda x: self.__COBRA_model.metabolites.get_by_id(x),list(filter(lambda y: False if y in shortest_path_metas_and_rxns else True,list(map(lambda z: z.id,self.__COBRA_model.metabolites)))))))
-        print('paths4',list(self.__COBRA_model.metabolites))
+        # # print('paths7',list(map(lambda z: z.id,self.__COBRA_model.metabolites)))
+        # # print('paths6',list(filter(lambda y: False if (y in shortest_path_metas_and_rxns) and ('C' in y) else True,list(map(lambda z: z.id,self.__COBRA_model.metabolites)))))
+        # # print('paths5',list(map(lambda x: self.__COBRA_model.metabolites.get_by_id(x),list(filter(lambda y: False if (y in shortest_path_metas_and_rxns) and ('C' in y) else True,list(map(lambda z: z.id,self.__COBRA_model.metabolites)))))))
+        # self.__COBRA_model.remove_metabolites(list(map(lambda x: self.__COBRA_model.metabolites.get_by_id(x),list(filter(lambda y: False if y in shortest_path_metas_and_rxns else True,list(map(lambda z: z.id,self.__COBRA_model.metabolites)))))))
+        # # print('paths4',list(self.__COBRA_model.metabolites))
+
+        # update metabolite list in MPNG
+        self.remove_meta_by_entry(list(filter(lambda x: x not in central_nodes,list(map(lambda y: y.entry,self.get_metabolites('all'))))))
+        # print('shortest_path',central_nodes)
+        # print('whole_meta',list(map(lambda y: y.entry,self.get_metabolites('all'))))
+        # update reaction list in MPNG
+        self.remove_rxns_by_entry(list(filter(lambda x: x not in central_nodes,list(map(lambda y: y.entry,self.get_reactions('all'))))))
+        # print('whole_rxn',list(map(lambda y: y.entry,self.get_reactions('all'))))
+        # print('')
 
         return paths
 
-    # STARTHERE: need better way to find the actual combination of boundary metabolites that yields a minimum of boundary metabolites
-    def __recursive_bounds(self,objective_meta_entry:str,all_meta_stoich:dict[str,float],all_rxn_stoich:dict[str,float],curr_meta_entry:str,prev_meta_entry:str,ct:int=0,max_iter:int=1000):
-        all_meta_stoich_values = list(all_meta_stoich.values())
-        if all([True if len(x) > 0 else False for x in all_meta_stoich_values]) or ct >= max_iter:
-            return [list(all_meta_stoich.keys())[all_meta_stoich_values.index(x)] for x in all_meta_stoich_values if min(x) < 0 < max(x)]
-        print('test2',list(self.__vis_Graph.neighbors(curr_meta_entry)))
-        print('test3',list(filter(lambda x: True if '.' in x else False,list(self.__vis_Graph.neighbors(curr_meta_entry)))))
-        curr_rxns = list(map(lambda x: self.get_reactions(x),list(filter(lambda x: True if '.' in x else False,list(self.__vis_Graph.neighbors(curr_meta_entry))))))
+    def __recursive_balance_check(self,objective_meta:str,all_meta_stoich:dict[str,float],all_rxn_stoich:dict[str,float],curr_meta:str,prev_meta:str,prev_rxn:str,
+                                  central_metas:list[str],central_rxns:list[str],bnd_metas:list[str],prev_meta_std_stoich:float,explored_metas:list[str]):
+        explored_metas.append(curr_meta)
+        # print('test0',curr_meta)
+
+        next_metas = []
+        curr_rxns = list(map(lambda x: self.get_reactions(x),list(filter(lambda x: 'R' in x,list(self.__vis_Graph.neighbors(curr_meta))))))
         for curr_rxn in curr_rxns:
             stoich = curr_rxn.stoich
-            print('test7',stoich)
-            curr_meta_std_stoich = stoich[list(stoich.keys())[list(map(lambda x: x.id,list(stoich.keys()))).index(curr_meta_entry)]]
-            if objective_meta_entry == curr_meta_entry:
-                curr_meta_stoich = 1
+            if prev_meta in list(map(lambda x: x.id,list(stoich.keys()))):
+                prev_meta_std_stoich = stoich[list(stoich.keys())[list(map(lambda x: x.id,list(stoich.keys()))).index(prev_meta)]]
+                # print('test6',prev_meta_std_stoich)
+                break
+        for curr_rxn in curr_rxns:
+            stoich = curr_rxn.stoich
+            curr_meta_std_stoich = stoich[list(stoich.keys())[list(map(lambda x: x.id,list(stoich.keys()))).index(curr_meta)]]
+            if objective_meta == curr_meta:
+                curr_meta_stoich = 1.0
             else:
-                prev_meta_std_stoich = stoich[list(stoich.keys())[list(map(lambda x: x.id,list(stoich.keys()))).index(prev_meta_entry)]]
-                print('test4',prev_meta_std_stoich,curr_meta_std_stoich)
-                curr_meta_stoich = all_meta_stoich[prev_meta_entry]/curr_meta_std_stoich*prev_meta_std_stoich
+                curr_meta_stoich = all_meta_stoich[prev_meta][prev_rxn]/curr_meta_std_stoich*prev_meta_std_stoich
 
-            all_meta_stoich[curr_meta_entry].append(curr_meta_stoich)
+            # print('test7.1',curr_meta,curr_rxn.entry)
+            all_meta_stoich[curr_meta][curr_rxn.entry] = curr_meta_stoich
             all_rxn_stoich[curr_rxn.entry] = curr_meta_stoich/curr_meta_std_stoich
-            print('test6',all_rxn_stoich)
+            # # print('test7.25',all_rxn_stoich,all_meta_stoich)
+            # # print('test7.5',explored_metas)
 
-            if curr_meta_stoich > 0:
-                next_metas = list(filter(lambda x: x not in self.__common_metabolite_entries,self.__vis_Graph.predecessors(curr_rxn.entry)))
-            else:
-                next_metas = list(filter(lambda x: x not in self.__common_metabolite_entries,self.__vis_Graph.successors(curr_rxn.entry)))
+            next_metas = list(filter(lambda x: (x != curr_meta) and (x not in explored_metas),
+                                     list(set(list(self.__vis_Graph.predecessors(curr_rxn.entry)) + list(self.__vis_Graph.successors(curr_rxn.entry))))))
 
-            print('test5',next_metas)
-            for next_meta in next_metas:
+            metas_for_update = list(filter(lambda x: (x != curr_meta) and (x not in next_metas),
+                                     list(set(list(self.__vis_Graph.predecessors(curr_rxn.entry)) + list(self.__vis_Graph.successors(curr_rxn.entry))))))
+            for meta_entry in metas_for_update:
+                curr_meta_stoich = all_meta_stoich[prev_meta][prev_rxn]/curr_meta_std_stoich*prev_meta_std_stoich
+                all_meta_stoich[meta_entry][curr_rxn.entry] = curr_meta_stoich
+
+            # print('test8',next_metas)
+            while len(next_metas) > 0:
+                res = self.__recursive_balance_check(objective_meta=objective_meta,
+                                                      all_meta_stoich=all_meta_stoich,
+                                                      all_rxn_stoich=all_rxn_stoich,
+                                                      curr_meta=next_metas.pop(0),
+                                                      prev_meta=curr_meta,
+                                                      prev_rxn=curr_rxn.entry,
+                                                      central_metas=central_metas,
+                                                      central_rxns=central_rxns,
+                                                      bnd_metas=bnd_metas,
+                                                      prev_meta_std_stoich=prev_meta_std_stoich,
+                                                      explored_metas=explored_metas)
+                for key in list(res.keys()):
+                    for key_2 in list(res[key].keys()):
+                        all_meta_stoich[key][key_2] = res[key][key_2]
+
+        if len(next_metas) == 0:
+            # print('test1',sum(x != 0 for x in all_rxn_stoich),len(all_rxn_stoich))
+            return all_meta_stoich
+
+    # STARTHERE: need better way to find the actual combination of boundary metabolites that yields a minimum of boundary metabolites
+    def __recursive_extend(self,objective_meta:str,unbal_metas:list[str],central_metas:list[str],central_rxns:list[str],
+                           leaf_metas:list[str],leaf_rxns:list[str],all_metas:dict[str,MPNG_Metabolite],all_rxns:dict[str,MPNG_Reaction],
+                           boundary_metas:list[str],ct:int=0,max_iter:int=100):
+        all_meta_stoich = self.__recursive_balance_check(objective_meta=objective_meta,
+                                          all_meta_stoich=dict((x.entry,{}) for x in self.get_metabolites('all')),
+                                          all_rxn_stoich=dict((x.entry,0) for x in self.get_reactions('all')),
+                                          curr_meta=objective_meta,
+                                          prev_meta=objective_meta,
+                                          prev_rxn='',
+                                          central_metas=central_metas,
+                                          central_rxns=central_rxns,
+                                          bnd_metas=unbal_metas,
+                                          prev_meta_std_stoich=0,
+                                          explored_metas=[])
+        # checks if all metabolites that have multiple reactions involved have at least one producing and one consuming reaction
+        # # print('test10',all_meta_stoich)
+        # # print('test10.1',list(filter(lambda z: z not in boundary_metas,all_meta_stoich.keys())))
+        print('test10.2',len(list(map(lambda y: list(all_meta_stoich[y].values()),filter(lambda z: (z not in boundary_metas) and (z in central_metas),all_meta_stoich.keys())))),
+              sum(len(x) > 0 for x in list(map(lambda y: list(all_meta_stoich[y].values()),filter(lambda z: (z not in boundary_metas) and (z in central_metas),all_meta_stoich.keys())))),
+              sum(len(x) > 1 for x in list(map(lambda y: list(all_meta_stoich[y].values()),filter(lambda z: (z not in boundary_metas) and (z in central_metas),all_meta_stoich.keys())))))
+        # calculate if graph is balanced
+        if all([min(x) < 0 < max(x) for x in list(map(lambda y: list(all_meta_stoich[y].values()),filter(lambda z: (z not in boundary_metas) and (z in central_metas),all_meta_stoich.keys())))]):
+            net_test = Network()
+            net_test.from_nx(self.__vis_Graph)
+            net_test.layout = False
+            net_test.options.physics.enabled = True
+            net_test.show_buttons()
+            net_test.show('test_slim_2.html',local=True,notebook=False)
+            return {'central_metas':central_metas,'central_rxns':central_rxns,'bnd_metas':[]}
+        if ct >= max_iter:
+            return {'central_metas':[],'central_rxns':[],'bnd_metas':unbal_metas}
+
+        # extend graph
+        # STARTHERE: need to properly define central_metas, should only be metas that are essential to the pathway
+        new_unbal_metas = []
+        print('unbal_metas',len(unbal_metas))
+        for meta in unbal_metas:
+            # each of the former unbal_metas are added to the central_metas
+            # central_metas += meta
+            # extend the graph on each metabolite
+            print('meta',meta)
+            for rxn in all_metas[meta].reactions:
+                metabolite_names: list[str] = list(filter(lambda y: y not in central_metas,list(map(lambda x: x.id,list(all_rxns[rxn].stoich.keys())))))
+                all_meta_names = ''.join(metabolite_names)
+                if ('G' in all_meta_names) or ('(' in all_meta_names): continue
+                self.add_reaction(all_rxns[rxn],all_metas[meta],list(map(lambda x: all_metas[x],metabolite_names)))
+                # each of the new metabolites added are the new unbal_metas
+                new_unbal_metas += metabolite_names
+        print('central_metas',central_metas,unbal_metas)
+        # run recursion
+        for meta in unbal_metas:
+            for rxn in all_metas[meta].reactions:
                 ct += 1
-                self.__recursive_bounds(objective_meta_entry,all_meta_stoich,all_rxn_stoich,next_meta,curr_meta_entry,ct,max_iter)
+                print('ct',ct)
+                res = self.__recursive_extend(objective_meta=objective_meta,
+                                               unbal_metas=list(set(new_unbal_metas)),
+                                               central_metas=central_metas,
+                                               central_rxns=central_rxns,
+                                               leaf_metas=leaf_metas,
+                                               leaf_rxns=leaf_rxns,
+                                               all_metas=all_metas,
+                                               all_rxns=all_rxns,
+                                               boundary_metas=boundary_metas,
+                                               ct=ct,
+                                               max_iter=max_iter)
+                central_metas += res['central_metas']
+                central_rxns += res['central_rxns']
+                unbal_metas += res['unbal_metas']
 
-    def __extend_network_from_unbalanced_bounds(self,objective_meta_entry:str,boundary_meta_entires:list[str],target_boundary_meta_entries:list[str]):
-        return
+        return {'central_metas':central_metas,'central_rxns':central_rxns,'bnd_metas':unbal_metas}
 
     # balances reaction network
-    def __find_unsteady_components(self,objective_meta_entry:list[str],boundary_metabolite_entries:list[str]) -> None:
+    def __find_unsteady_components(self,objective_meta_entry:list[str],boundary_metabolite_entries:list[str],all_metas:list[MPNG_Metabolite],
+                                   all_rxns:list[MPNG_Reaction]) -> None:
         """testing to make sure only necessary sinks exist"""
-        # net_test = Network()
-        # net_test.from_nx(self.__vis_Graph)
-        # net_test.layout = False
-        # net_test.options.physics.enabled = True
-        # net_test.show_buttons()
-        # net_test.show('test_slim_2.html',local=True,notebook=False)
-        boundary_metabolite_result = self.__recursive_bounds(objective_meta_entry,dict((x,[]) for x in self.get_metabolites('all')),dict((x,0) for x in self.get_reactions('all')),objective_meta_entry,'',0,max_iter=len(self.__metabolites))
-        print('test',boundary_metabolite_result)
+        boundary_metabolite_entries += objective_meta_entry
+        # print('test61',list(map(lambda x: x.entry,self.get_metabolites('all'))))
+        boundary_metabolite_result = self.__recursive_extend(objective_meta=objective_meta_entry[0],
+                                                             unbal_metas=list(map(lambda x: x.entry,self.get_metabolites('all'))),
+                                                             central_metas=list(map(lambda x: x.entry,self.get_metabolites('all'))),
+                                                             central_rxns=list(map(lambda x: x.entry,self.get_reactions('all'))),
+                                                             leaf_metas=list(map(lambda x: x.entry,self.get_metabolites('all'))),
+                                                             leaf_rxns=list(map(lambda x: x.entry,self.get_reactions('all'))),
+                                                             all_metas=all_metas,
+                                                             all_rxns=all_rxns,
+                                                             boundary_metas=boundary_metabolite_entries,
+                                                             ct=0,
+                                                             max_iter=100)
+        # print('test',boundary_metabolite_result)
+        central_metas = boundary_metabolite_result['central_metas']
+        # print('test2',list(map(lambda x: x.entry,central_metas)))
+        central_rxns = boundary_metabolite_result['central_rxns']
+        new_bnd_metas = boundary_metabolite_result['bnd_metas']
         boundary_rxns = [rxn for rxn in self.__COBRA_model.reactions if 'SK_' in rxn.id]
         self.__COBRA_model.remove_reactions(boundary_rxns)
         for meta in boundary_metabolite_result:
             self.__vis_Graph.add_node(meta+'_accum')
             self.__vis_Graph.add_edge(meta,meta+'_accum',stoich=1,arrows='to')
-            self.__COBRA_model.add_boundary(self.__COBRA_model.metabolites.get_by_id(meta),type='sink',lb=-1000,ub=1000)
+            self.__COBRA_model.add_boundary(self.__COBRA_model.metabolites.get_by_id(meta.entry),type='sink',lb=-1000,ub=1000)
         self.__COBRA_model.remove_metabolites([meta for meta in self.__COBRA_model.metabolites if len(meta.reactions) == 0])
 
         print("Reactions")
@@ -400,8 +542,9 @@ class MetabolicPathwayNetworkGraph:
         return self.mass_balance_sln
 
     # NEW_FEATURE: multiple objective functions?
-    def run_mass_balance(self,objective_metabolite_entries:list[str],boundary_metabolite_entries:list[str]) -> Solution:
-        self.__find_unsteady_components(objective_metabolite_entries,boundary_metabolite_entries)
+    def run_mass_balance(self,objective_metabolite_entries:list[str],boundary_metabolite_entries:list[str],all_metas:dict[str,MPNG_Metabolite],
+                         all_rxns:dict[str,MPNG_Reaction]) -> Solution:
+        self.__find_unsteady_components(objective_metabolite_entries,boundary_metabolite_entries,all_metas,all_rxns)
         return self.__COBRA_model.optimize()
 
     def assess_enzyme_promiscuity(self) -> None:
