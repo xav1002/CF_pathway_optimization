@@ -133,6 +133,7 @@ class WholeCellConsortiumModel:
             lvl_ct += 1
             print("Level "+str(lvl_ct)+" completed.")
 
+            # if all(target_meta in self.__graphs[network_name].__vis_Graph.nodes for target_meta in target_metabolite_entries): path_ct += 1
             if all(target_meta in list(map(lambda x: x.entry,self.__graphs[network_name].get_metabolites('all'))) for target_meta in target_metabolite_entries): path_ct += 1
 
         # Task 2: implement thermodynamic feasibility constraints
