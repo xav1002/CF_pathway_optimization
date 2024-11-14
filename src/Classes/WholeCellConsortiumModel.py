@@ -2,8 +2,9 @@ import sys
 sys.path.append('../../Lib')
 from pyvis.network import Network
 import networkx as nx
-import traceback
 import json
+
+from cobra import Metabolite
 
 from MetabolicPathwayNetworkGraph import MetabolicPathwayNetworkGraph
 from MicrobialConsortiumKineticModel import MicrobialConsortiumKineticModel
@@ -42,6 +43,7 @@ class WholeCellConsortiumModel:
                 new_enz = MPNG_Enzyme.fromJSON(dict_from_json=json.loads(x))
                 self.__enzymes[new_meta.entry] = new_enz
         print('number of metabolites: ',len(list(self.__metabolites.keys())))
+        print('number of reactions: ',len(list(self.__reactions.keys())))
 
         self.__common_metabolite_entries = ['C00138','C00139','C00080','C00024']
         for x in range(14):
@@ -51,7 +53,14 @@ class WholeCellConsortiumModel:
         print('common',self.common_metabolites)
 
         self.__graphs: dict[str,MetabolicPathwayNetworkGraph] = {}
+        self.__whole_KEGG_graph = nx.DiGraph()
 
+        for idx,x in enumerate(self.__get_reactions('all')):
+            self.add_reaction(x)
+
+        print('test',len(list(filter(lambda x: 'C' in x,list(self.__whole_KEGG_graph.nodes)))))
+        print('test1.5',len(list(filter(lambda x: 'R' in x,list(self.__whole_KEGG_graph.nodes)))))
+        print('test2',len(list(self.__whole_KEGG_graph.nodes)))
         return
 
     @property
@@ -68,19 +77,22 @@ class WholeCellConsortiumModel:
 
     @metabolites.setter
     def metabolites(self,metas:dict[str,MPNG_Metabolite]) -> None:
-        self.metabolites = metas
+        self.__metabolites = metas
 
     @reactions.setter
     def reactions(self,rxns:dict[str,MPNG_Reaction]) -> None:
-        self.reactions = rxns
+        self.__reactions = rxns
 
     @enzymes.setter
     def enzymes(self,enz:dict[str,MPNG_Enzyme]) -> None:
-        self.enzymes = enz
+        self.__enzymes = enz
 
     def __get_metabolites(self,entries:str|list) -> MPNG_Metabolite | list[MPNG_Metabolite]:
         if type(entries) == str:
-            return self.__metabolites[entries]
+            if entries == 'all':
+                return list(self.__metabolites.values())
+            else:
+                return self.__metabolites[entries]
         elif type(entries) == list:
             metas = []
             for x in entries:
@@ -91,7 +103,10 @@ class WholeCellConsortiumModel:
 
     def __get_reactions(self,entries:str|list) -> MPNG_Reaction | list[MPNG_Reaction]:
         if type(entries) == str:
-            return self.__reactions[entries]
+            if entries == 'all':
+                return list(self.__reactions.values())
+            else:
+                return self.__reactions[entries]
         elif type(entries) == list:
             rxns = []
             for x in entries:
@@ -102,7 +117,10 @@ class WholeCellConsortiumModel:
 
     def __get_enzymes(self,entries:str|list) -> MPNG_Enzyme | list[MPNG_Enzyme]:
         if type(entries) == str:
-            return self.__enzymes[entries]
+            if entries == 'all':
+                return list(self.__enzymes.values())
+            else:
+                return self.__enzymes[entries]
         elif type(entries) == list:
             enz = []
             for x in entries:
@@ -111,10 +129,35 @@ class WholeCellConsortiumModel:
         else:
             return []
 
+    def add_reaction(self,new_reaction:MPNG_Reaction) -> None:
+        # add to NX Graph
+        self.__whole_KEGG_graph.add_node(node_for_adding=new_reaction.entry+'_f')
+        self.__whole_KEGG_graph.add_node(node_for_adding=new_reaction.entry+'_r')
+
+        stoich: dict[Metabolite,int] = new_reaction.stoich
+        key_entries = list(map(lambda x: x.id,list(stoich.keys())))
+        for m in key_entries:
+            if m not in self.__whole_KEGG_graph.nodes:
+                self.__whole_KEGG_graph.add_node(node_for_adding=m)
+            if stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
+                self.__whole_KEGG_graph.add_edge(m,new_reaction.entry+'_f',
+                    stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                )
+                self.__whole_KEGG_graph.add_edge(new_reaction.entry+'_r',m,
+                    stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                )
+            elif stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
+                self.__whole_KEGG_graph.add_edge(new_reaction.entry+'_f',m,
+                    stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                )
+                self.__whole_KEGG_graph.add_edge(m,new_reaction.entry+'_r',
+                    stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                )
+
     def explore_products_from_substrates(self,root_metabolite_entries:list[str]) -> None:
         return
 
-    def seek_optimal_pathway(self,network_name:str,target_metabolite_entries:list[str],root_metabolite_entries:list[str],) -> MetabolicPathwayNetworkGraph:
+    def seek_optimal_pathway(self,network_name:str,target_metabolite_entry:str,root_metabolite_entries:list[str],) -> MetabolicPathwayNetworkGraph:
         roots = self.__get_metabolites(entries=root_metabolite_entries)
         print(list(map(lambda root: root.entry,roots)))
 
@@ -133,8 +176,7 @@ class WholeCellConsortiumModel:
             lvl_ct += 1
             print("Level "+str(lvl_ct)+" completed.")
 
-            # if all(target_meta in self.__graphs[network_name].__vis_Graph.nodes for target_meta in target_metabolite_entries): path_ct += 1
-            if all(target_meta in list(map(lambda x: x.entry,self.__graphs[network_name].get_metabolites('all'))) for target_meta in target_metabolite_entries): path_ct += 1
+            if target_metabolite_entry in list(map(lambda x: x.entry,self.__graphs[network_name].get_metabolites('all'))): path_ct += 1
 
         # Task 2: implement thermodynamic feasibility constraints
 
@@ -196,28 +238,31 @@ class WholeCellConsortiumModel:
 
         return graph
 
-    def calculate_graph_metrics(self,network_name:str,objective_meta_entry:str,boundary_metabolite_entries:list[str],
-                                root_metabolite_entries:list[str],target_metabolite_entries:list[str]) -> None:
-        self.__graphs[network_name].run_mass_balance(objective_meta_entry,boundary_metabolite_entries,self.__metabolites,self.__reactions)
-
-        # shortest_paths = self.__graph[network_name].find_shortest_paths(root_metabolite_entries,target_metabolite_entries)
+    def calculate_graph_metrics(self,network_name:str,objective_meta_entry:str,boundary_metabolite_entries:list[str]) -> None:
+        self.__graphs[network_name].run_mass_balance(objective_metabolite_entry=objective_meta_entry,
+                                                     boundary_metabolite_entries=boundary_metabolite_entries,
+                                                     all_metas=self.__metabolites,
+                                                     all_rxns=self.__reactions,
+                                                     whole_KEGG_graph=self.__whole_KEGG_graph)
 
         return self.__graphs[network_name]
 
     def visualize_graph(self,network_name:str) -> None:
         MPNG_net = self.__graphs[network_name]
         MPNG_net.vis_Network = Network()
+        print('test71',MPNG_net.get_reactions('all'))
+        print('test72',MPNG_net.COBRA_model.reactions)
         for idx,co_rxn in enumerate(MPNG_net.COBRA_model.reactions):
             flux_val = MPNG_net.mass_balance_sln.fluxes[co_rxn.id]
             # adding edges to slim graph
             if round(flux_val) != 0:
                 if len([rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id]) == 0:
-                    break
+                    continue
                 rxn = [rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id][0]
-                if rxn.enzyme_id[0] in MPNG_net.vis_Network.get_nodes():
-                    MPNG_net.vis_Network.get_node(rxn.enzyme_id[0])['label'] = MPNG_net.vis_Network.get_node(rxn.enzyme_id[0])['label']+str('; enz_f: '+str(round(abs(flux_val))))
+                if rxn.entry+'_'+rxn.enzyme_id[0] in MPNG_net.vis_Network.get_nodes():
+                    MPNG_net.vis_Network.get_node(rxn.entry+'_'+rxn.enzyme_id[0])['label'] = MPNG_net.vis_Network.get_node(rxn.entry+'_'+rxn.enzyme_id[0])['label']+str('; enz_f: '+str(round(abs(flux_val))))
                 else:
-                    MPNG_net.vis_Network.add_node(rxn.enzyme_id[0],rxn.enzyme_id[0]+'; enz_f: '+str(round(abs(flux_val))),shape='box')
+                    MPNG_net.vis_Network.add_node(rxn.entry+'_'+rxn.enzyme_id[0],rxn.entry+'_'+rxn.enzyme_id[0]+'; enz_f: '+str(round(abs(flux_val))),shape='box')
                 for meta in list(co_rxn.metabolites.keys()):
                     if meta.id in self.common_metabolites:
                         MPNG_net.vis_Network.add_node(meta.id+'_'+str(idx),[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
@@ -226,15 +271,15 @@ class WholeCellConsortiumModel:
                     if co_rxn.metabolites[meta] < 0:
                         arrow_dir = 'to' if round(flux_val) > 0 else 'from'
                         if meta.id in self.common_metabolites:
-                            MPNG_net.vis_Network.add_edge(meta.id+'_'+str(idx),rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                            MPNG_net.vis_Network.add_edge(meta.id+'_'+str(idx),rxn.entry+'_'+rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
                         else:
-                            MPNG_net.vis_Network.add_edge(meta.id,rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                            MPNG_net.vis_Network.add_edge(meta.id,rxn.entry+'_'+rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
                     elif co_rxn.metabolites[meta] > 0:
                         arrow_dir = 'to' if round(flux_val) > 0 else 'from'
                         if meta.id in self.common_metabolites:
-                            MPNG_net.vis_Network.add_edge(rxn.enzyme_id[0],meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                            MPNG_net.vis_Network.add_edge(rxn.entry+'_'+rxn.enzyme_id[0],meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
                         else:
-                            MPNG_net.vis_Network.add_edge(rxn.enzyme_id[0],meta.id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                            MPNG_net.vis_Network.add_edge(rxn.entry+'_'+rxn.enzyme_id[0],meta.id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
 
         MPNG_net.vis_Network.layout = False
         MPNG_net.vis_Network.options.physics.enabled = True
