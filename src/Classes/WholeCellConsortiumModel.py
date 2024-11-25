@@ -50,7 +50,6 @@ class WholeCellConsortiumModel:
             zeros = '0'*(5-len(str(x+1)))
             self.__common_metabolite_entries.append('C'+zeros+str(x+1))
         self.common_metabolites = self.__get_metabolites(entries=self.__common_metabolite_entries)
-        print('common',self.common_metabolites)
 
         self.__graphs: dict[str,MetabolicPathwayNetworkGraph] = {}
         self.__whole_KEGG_graph = nx.DiGraph()
@@ -58,9 +57,6 @@ class WholeCellConsortiumModel:
         for idx,x in enumerate(self.__get_reactions('all')):
             self.add_reaction(x)
 
-        print('test',len(list(filter(lambda x: 'C' in x,list(self.__whole_KEGG_graph.nodes)))))
-        print('test1.5',len(list(filter(lambda x: 'R' in x,list(self.__whole_KEGG_graph.nodes)))))
-        print('test2',len(list(self.__whole_KEGG_graph.nodes)))
         return
 
     @property
@@ -157,26 +153,34 @@ class WholeCellConsortiumModel:
     def explore_products_from_substrates(self,root_metabolite_entries:list[str]) -> None:
         return
 
-    def seek_optimal_pathway(self,network_name:str,target_metabolite_entry:str,root_metabolite_entries:list[str],) -> MetabolicPathwayNetworkGraph:
-        roots = self.__get_metabolites(entries=root_metabolite_entries)
-        print(list(map(lambda root: root.entry,roots)))
-
+    def generate_whole_network(self,network_name:str) -> MetabolicPathwayNetworkGraph:
         # Task 1: construct metabolic network connections
-        self.__graphs[network_name] = MetabolicPathwayNetworkGraph(network_name,roots)
+        self.__graphs[network_name] = MetabolicPathwayNetworkGraph(network_name)
 
-        lvl_ct = 0
-        max_lvls = 15
-        path_ct = 0
-        target_path_ct = 3
-        while lvl_ct < max_lvls and path_ct < target_path_ct:
-            # grow graph
-            self.__graphs[network_name] = self.__grow_graph(self.__graphs[network_name])
-            # check for overlap with other graphs
+        for rxn in self.__get_reactions('all'):
+            self.__graphs[network_name].add_reaction(rxn,[self.__get_metabolites(meta) for meta in list(map(lambda x: x.id,list(rxn.stoich.keys()))) if 'G' not in meta and '(' not in meta])
 
-            lvl_ct += 1
-            print("Level "+str(lvl_ct)+" completed.")
+        self.__graphs[network_name].generate_COBRA_model()
 
-            if target_metabolite_entry in list(map(lambda x: x.entry,self.__graphs[network_name].get_metabolites('all'))): path_ct += 1
+        return self.__graphs[network_name]
+
+    def seek_optimal_network(self,
+                             network_name:str,
+                             objective_meta_entries:list[str],
+                             substrate_metabolite_entries:list[str],
+                             objective_meta_opt_weight:float,
+                             substrate_meta_opt_weight:float,
+                             non_zero_rxns_opt_weight:float,
+                             non_zero_ex_rxns_opt_weight:float) -> None:
+        # 1. Find optimal network via constrained mass balance
+        self.__graphs[network_name].seek_optimal_network(objective_metabolite_entries=objective_meta_entries,
+                                                     substrate_metabolite_entries=substrate_metabolite_entries,
+                                                     optimization_weights={
+                                                         'objective_meta':objective_meta_opt_weight,
+                                                         'substrate_meta':substrate_meta_opt_weight,
+                                                         'non_zero_rxns':non_zero_rxns_opt_weight,
+                                                         'non_zero_ex_rxns':non_zero_ex_rxns_opt_weight
+                                                         })
 
         # Task 2: implement thermodynamic feasibility constraints
 
@@ -194,64 +198,9 @@ class WholeCellConsortiumModel:
 
         return self.__graphs[network_name]
 
-        # net = Network(notebook=False,cdn_resources="remote",width="100%",height="600px")
-        # net.from_nx(graph.NX_Graph)
-        # return net
-
-    def prune_graph(self,network_name:str,objective_meta_entry:str,src_meta_entries:list[str]):
-        self.__graphs[network_name].prune_graph(objective_meta_entry,src_meta_entries,self.__metabolites,self.__reactions)
-        return self.__graphs[network_name]
-
-    def __grow_graph(self,graph:MetabolicPathwayNetworkGraph) -> MetabolicPathwayNetworkGraph:
-        print('leaves length',len(graph.leaf_metabolites))
-        for idx,leaf in enumerate(graph.leaf_metabolites):
-            # print("leaf:"+str(idx),leaf)
-            # query all reactions for given leaf metabolite
-            # print(leaf.reactions)
-            rxns = self.__get_reactions(leaf.reactions)
-
-            for rxn in rxns:
-                if rxn.entry not in list(map(lambda x: x.id,graph.COBRA_model.reactions)):
-                    # instantiating new MPNG_Metabolites based on list in MPNG_Reaction
-                    metabolite_names: list[str] = list(map(lambda x: x.id,list(rxn.stoich.keys())))
-                    # common_metabolites_in_rxn: list[str] = []
-                    # for meta in self.__common_metabolite_entries:
-                    #     if meta in metabolite_names:
-                    #         metabolite_names.remove(meta)
-                    #         common_metabolites_in_rxn.append(meta)
-
-                    all_meta_names = ''.join(metabolite_names)
-                    if ('G' in all_meta_names) or ('(' in all_meta_names): continue
-                    # STARTHERE: need to better define list of common metabolites
-                    metabolites = self.__get_metabolites(metabolite_names)
-                    # print('test',list(map(lambda x: x.entry,metabolites+[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])))
-                    # print('test2',list(map(lambda x: x.entry,metabolites)))
-                    # print('test3',list(map(lambda x: x.entry,[meta for meta in self.common_metabolites if meta.entry in common_metabolites_in_rxn])))
-                    try:
-                        graph.add_reaction(rxn,leaf,metabolites)
-                    except Exception as e:
-                        print(e)
-
-            leaf.explored = True
-
-        graph.update_explored_leaves()
-
-        return graph
-
-    def calculate_graph_metrics(self,network_name:str,objective_meta_entry:str,boundary_metabolite_entries:list[str]) -> None:
-        self.__graphs[network_name].run_mass_balance(objective_metabolite_entry=objective_meta_entry,
-                                                     boundary_metabolite_entries=boundary_metabolite_entries,
-                                                     all_metas=self.__metabolites,
-                                                     all_rxns=self.__reactions,
-                                                     whole_KEGG_graph=self.__whole_KEGG_graph)
-
-        return self.__graphs[network_name]
-
     def visualize_graph(self,network_name:str) -> None:
         MPNG_net = self.__graphs[network_name]
         MPNG_net.vis_Network = Network()
-        print('test71',MPNG_net.get_reactions('all'))
-        print('test72',MPNG_net.COBRA_model.reactions)
         for idx,co_rxn in enumerate(MPNG_net.COBRA_model.reactions):
             flux_val = MPNG_net.mass_balance_sln.fluxes[co_rxn.id]
             # adding edges to slim graph
