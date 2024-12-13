@@ -7,11 +7,14 @@ sys.path.append('../../Lib')
 import numpy as np
 import pandas as pd
 from scipy import optimize as opt
+from sympy import UnevaluatedExpr
 from cobra import Model, Reaction, Metabolite, Solution
-from cobra.util.solver import add_cons_vars_to_problem
+from cobra.util.solver import add_absolute_expression, choose_solver, check_solver, get_solver_name
+from optlang.symbolics import Zero
 import networkx as nx
 from pyvis.network import Network
 import re
+import equilibrator_api as eq
 
 from MPNG_Metabolite import MPNG_Metabolite
 from MPNG_Reaction import MPNG_Reaction
@@ -27,9 +30,8 @@ class MetabolicPathwayNetworkGraph:
 
         self.__COBRA_model: Model = Model(name+'_cobra')
         self.__mass_balance_sln: Solution = None
-        # self.__NX_Graph: nx.Graph = nx.Graph(name+'_nx')
         self.__vis_Graph: nx.Graph = nx.DiGraph()
-        self.__path_Graph: nx.DiGraph = nx.Graph()
+        self.__path_Graph: nx.DiGraph = nx.DiGraph()
 
         self.__temperature = 303.15 # K
         self.__pH = 7
@@ -39,8 +41,10 @@ class MetabolicPathwayNetworkGraph:
             'NADPH': 0, 'NADP': 0,
             'FADH2': 0, 'FAD': 0
         }
+        self.__cc = eq.ComponentContribution()
 
-        self.__common_metabolite_entries = ['C00138','C00139','C00080','C00024']
+        self.__small_gas_metas = ['C00001','C00007','C00011']
+        self.__common_metabolite_entries = ['C00138','C00139','C00080','C00024','C00125','C00126']
         for x in range(14):
             zeros = '0'*(5-len(str(x+1)))
             self.__common_metabolite_entries.append('C'+zeros+str(x+1))
@@ -206,14 +210,6 @@ class MetabolicPathwayNetworkGraph:
     def pH(self,new_pH:float) -> None:
         self.__pH = new_pH
 
-    # @property
-    # def E_carriers(self) -> float:
-    #     return self.__E_carriers
-
-    # @E_carriers.setter
-    # def E_carriers(self,new_E_carriers:dict) -> None:
-    #     self.__E_carriers = new_E_carriers
-
     def __update_COBRA_model(self,new_reactions:list[MPNG_Reaction]) -> None:
         # COBRA automatically checks if reaction already exists (ignored if it does)
         new_rxns = []
@@ -221,10 +217,9 @@ class MetabolicPathwayNetworkGraph:
             reaction: Reaction = Reaction(rxn.entry,lower_bound=None,upper_bound=None)
             reaction.add_metabolites(rxn.stoich)
             new_rxns.append(reaction)
-        #     if rxn.entry == 'R00746':
-        #         print('equation',rxn.stoich)
-        # print('new_rxns',new_rxns)
+        print('adding COBRA reactions...')
         self.__COBRA_model.add_reactions(new_rxns)
+        print('all COBRA reactions added')
 
     def add_reaction(self,new_reaction:MPNG_Reaction,new_metabolites:list[MPNG_Metabolite]) -> None:
         # add MPNG_Reaction to MPNG
@@ -232,7 +227,8 @@ class MetabolicPathwayNetworkGraph:
         rxn_number = new_reaction.enzyme_id[0]+':'+new_reaction.entry+'_'+str(len(self.__reactions.keys()))
         # add to NX Graph
         self.__vis_Graph.add_node(node_for_adding=new_reaction.entry,id=len(self.__vis_Graph.nodes))
-        # self.__path_Graph.add_node(node_for_adding=new_reaction.enzyme_id[0],id=len(self.__path_Graph.nodes))
+        self.__path_Graph.add_node(node_for_adding=new_reaction.entry+'_f',id=len(self.__path_Graph.nodes))
+        self.__path_Graph.add_node(node_for_adding=new_reaction.entry+'_r',id=len(self.__path_Graph.nodes))
 
         stoich: dict[Metabolite,int] = new_reaction.stoich
         key_entries = list(map(lambda x: x.id,list(stoich.keys())))
@@ -241,17 +237,36 @@ class MetabolicPathwayNetworkGraph:
             if m not in self.__vis_Graph.nodes and 'G' not in m and '(' not in m:
                 self.__vis_Graph.add_node(node_for_adding=m)
                 self.metabolites = new_metabolites[idx]
+                if stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
+                    self.__vis_Graph.add_edge(m,new_reaction.entry,
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
+                elif stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
+                    self.__vis_Graph.add_edge(new_reaction.entry,m,
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
+                    # self.__path_Graph.add_edge(new_reaction.entry+'_f',m,
+                    #     stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    # )
+                    # self.__path_Graph.add_edge(m,new_reaction.entry+'_r',
+                    #     stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    # )
+            if 'G' not in m and '(' not in m and m not in [x for x in self.__common_metabolite_entries if x != 'C00011']:
                 self.__path_Graph.add_node(node_for_adding=m)
-                if m not in self.__common_metabolite_entries:
-                    self.__temp_leaves.append(new_metabolites[idx])
-            if stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
-                self.__vis_Graph.add_edge(m,new_reaction.entry,
-                    stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
-                )
-            elif stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
-                self.__vis_Graph.add_edge(new_reaction.entry,m,
-                    stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
-                )
+                if stoich[list(stoich.keys())[key_entries.index(m)]] < 0:
+                    self.__path_Graph.add_edge(m,new_reaction.entry+'_f',
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
+                    self.__path_Graph.add_edge(new_reaction.entry+'_r',m,
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
+                elif stoich[list(stoich.keys())[key_entries.index(m)]] > 0:
+                    self.__path_Graph.add_edge(new_reaction.entry+'_f',m,
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
+                    self.__path_Graph.add_edge(m,new_reaction.entry+'_r',
+                        stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
+                    )
 
     def add_reaction_slim(self,new_reaction:MPNG_Reaction,all_metas:dict[str,MPNG_Metabolite]) -> None:
         # add to NX Graph
@@ -290,7 +305,9 @@ class MetabolicPathwayNetworkGraph:
         return
 
     def generate_COBRA_model(self) -> None:
+        print('generating COBRA model...')
         self.__update_COBRA_model(self.get_reactions('all'))
+        print('generating COBRA boundaries...')
         boundary_rxns = [rxn for rxn in self.__COBRA_model.reactions if 'SK_' in rxn.id]
         self.__COBRA_model.remove_reactions(boundary_rxns)
         for meta in self.__COBRA_model.metabolites:
@@ -298,93 +315,366 @@ class MetabolicPathwayNetworkGraph:
                 self.__COBRA_model.add_boundary(meta,type='sink',lb=None,ub=None)
             except Exception as e:
                 pass
+        print('COBRA model ready')
+
+    def __find_shortest_simple_paths(self,
+                                     objective_meta_entry:str,
+                                     substrate_meta_entries:list[str],
+                                     min_enzyme_ct:int,
+                                     max_enzyme_ct:int):
+        shortest_paths = [x for x in nx.all_simple_paths(self.__path_Graph,source=objective_meta_entry,target=substrate_meta_entries,cutoff=max_enzyme_ct*2+1)]
+        shortest_paths = [x for x in shortest_paths if len(x) >= min_enzyme_ct*2+1]
+        return shortest_paths
+
+    def __balance_candidate_networks(self,candidate_paths:list[list[str]],objective_meta_entry:str,substrate_meta_entries:list[str]):
+        # 1. Try to generate any solution from COBRA model while minimizing total flux - can modify this to use different constraint to obtain optimal solution
+        bnd_meta_entries = substrate_meta_entries+[objective_meta_entry]
+        print('number of candidate paths: ',len(candidate_paths),candidate_paths)
+        with self.__COBRA_model as mdl:
+            # limiting exchanges to only those for objective and substrate metabolites and small gas metas
+            for rxn in [x for x in mdl.boundary if re.split('_',x.id)[1] not in bnd_meta_entries and re.split('_',x.id)[1] not in self.__small_gas_metas]:
+                mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+                # only prevents intake of non-substrate metabolites, doesn't prevent production of other metabolites
+                # mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+
+            # Shutting down reverse reactions that are infeasible according to BRENDA
+            for rxn in [x for x in mdl.reactions if x not in mdl.boundary]:
+                if rxn.reversible == False:
+                    mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+
+            obj_dict = {}
+            # 2.1 Create optimization objective for reactions on path
+            path_opt_vars = []
+            for idx,path in enumerate(candidate_paths):
+                print('Creating optimization objective for path #',idx+1)
+                for node in path:
+                    if 'R' in node:
+                        [rxn_entry,path_direction] = re.split('_',node)
+                        rxn: Reaction = mdl.reactions.get_by_id(rxn_entry)
+                        # here, the optimization stoichiometry is flipped because the pathway seeking starts from target  
+                        # and seeks towards substrates
+                        if path_direction == 'r':
+                            obj_dict[rxn.forward_variable] = 2
+                            obj_dict[rxn.reverse_variable] = -2
+                        else:
+                            obj_dict[rxn.forward_variable] = -2
+                            obj_dict[rxn.reverse_variable] = 2
+                        path_opt_vars.append(rxn.forward_variable)
+                        path_opt_vars.append(rxn.reverse_variable)
+
+            # 2.2 Create optimization for objective metabolite exchange reaction
+            rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
+            obj_dict[rxn.forward_variable] = 2
+            obj_dict[rxn.reverse_variable] = -2
+
+            # 2.3 Create optimization objective for substrate exchange reactions
+            # STARTHERE: is this needed?
+            substrate_opt_vars = []
+            for sub_meta_entry in substrate_meta_entries:
+                rxn: Reaction = mdl.reactions.get_by_id('SK_'+sub_meta_entry)
+                obj_dict[rxn.forward_variable] = -1
+                obj_dict[rxn.reverse_variable] = 1
+                substrate_opt_vars.append(rxn.forward_variable)
+                substrate_opt_vars.append(rxn.reverse_variable)
+
+            # 2.4 Create optimization objective for number of total sum of flux absolute values
+            tot_flux_vars = []
+            tot_flux_consts = []
+            for rxn in mdl.reactions:
+                new_var = mdl.problem.Variable('rxn_var_'+rxn.id)
+                new_constraint = mdl.problem.Constraint(rxn.forward_variable + rxn.reverse_variable - new_var,
+                                        name='rxn_constraint_'+rxn.id,
+                                        ub=0,
+                                        lb=0)
+                tot_flux_vars.append(new_var)
+                tot_flux_consts.append(new_constraint)
+                mdl.add_cons_vars([new_var,new_constraint])
+                obj_dict[new_var] = -1
+
+            # 2.5 Preventing reactions that utilize target metabolite
+            target_meta = mdl.metabolites.get_by_id(objective_meta_entry)
+            for rxn in [x for x in mdl.reactions if x.id != 'SK_'+objective_meta_entry]:
+                stoich = rxn.metabolites
+                subs = []
+                prods = []
+                for key in list(stoich.keys()):
+                    if stoich[key] > 0:
+                        prods.append(key)
+                    elif stoich[key] < 0:
+                        subs.append(key)
+                if target_meta in prods:
+                    mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+                elif target_meta in subs:
+                    mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+
+            # 2.6 Restricting non-reversible reactions
+            mdl.reactions.get_by_id('R00224').lower_bound = 0
+            mdl.reactions.get_by_id('R03145').lower_bound = 0
+            mdl.reactions.get_by_id('R11074').lower_bound = 0
+
+            # 2.7 Print COBRA model metrics and solve level 1
+            print('obj_dict lvl_1',obj_dict)
+            mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
+            mdl.solver.objective.set_linear_coefficients(obj_dict)
+            lvl_1_res = self.mass_balance_sln = mdl.optimize()
+            print('objective_value lvl_1',lvl_1_res.objective_value)
+
+            fluxes_lvl_1 = self.mass_balance_sln.fluxes
+            int_fluxes_lvl_1 = fluxes_lvl_1.loc[[x for x in fluxes_lvl_1.index if 'SK_' not in x]]
+            bnd_fluxes_lvl_1 = fluxes_lvl_1.loc[[x for x in fluxes_lvl_1.index if 'SK_' in x]]
+            rel_int_fluxes_lvl_1 = int_fluxes_lvl_1.loc[[x for x in int_fluxes_lvl_1.index if round(int_fluxes_lvl_1[x]) != 0]]
+            rel_bnd_fluxes_lvl_1 = bnd_fluxes_lvl_1.loc[[x for x in bnd_fluxes_lvl_1.index if round(bnd_fluxes_lvl_1[x]) != 0]]
+            print('number of internal rxns used (lvl_1): ',(round(int_fluxes_lvl_1)!=0).sum())
+            print('number of boundary rxns used (lvl_1): ',(round(bnd_fluxes_lvl_1)!=0).sum())
+            print('int_fluxes (lvl_1): ',rel_int_fluxes_lvl_1.to_markdown())
+            print('bnd_fluxes (lvl_1): ',rel_bnd_fluxes_lvl_1.to_markdown())
+
+            # 3. If solution exists, try finding all independent balanced networks
+            # 3.1 Restricting to relevant reactions based on previous mass balance solution
+            print('starting optimization lvl_2...',rel_int_fluxes_lvl_1.index)
+            rxns_lvl_2 = [x for x in mdl.reactions if x.id in list(rel_int_fluxes_lvl_1.index)]
+            for rxn in [x for x in mdl.reactions if x not in rxns_lvl_2 and x not in mdl.boundary]:
+                mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+                mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+            print('finished restricting to relevant reactions')
+
+            # 3.2 Generating optimization target based on reaction dG
+            # and removing minimization of total flux
+            dGr_dict = {}
+            for rxn in rxns_lvl_2:
+                dGr_dict[rxn] = -1
+
+            for rxn in rxns_lvl_2:
+                # method 1: minimize sum of abs dGr in network
+                # method 2: if target metabolite is lower dGf than substrates, then try to minimize differences of dGf of intermediates
+                # relative to substrates - do this by minimizing the value of dGr immediate to substrates and the sum of abs of the dGr of the whole network
+                rxn_meta_keys = list(rxn.metabolites.keys())
+                compound_ids = [meta.id for meta in rxn_meta_keys]
+                rxn_dict = {}
+                print('rxn_entry',rxn.id)
+                for meta in rxn_meta_keys:
+                    rxn_dict[self.__cc.get_compound(f"kegg:{meta.id}")] = rxn.metabolites[rxn_meta_keys[compound_ids.index(meta.id)]]
+                try:
+                    eqi_rxn = eq.Reaction(rxn_dict)
+                    dGr = abs(self.__cc.dg_prime(eqi_rxn).value.m_as("kJ/mol"))
+                    dGr_dict[rxn] = dGr
+                    print('dGr',dGr)
+                except Exception as e:
+                    print('equilibrator warning: ',e)
+                    print('abs dGr is assumed negative here')
+
+            dGr_max = max(list(dGr_dict.values()))
+            for rxn in list(dGr_dict.keys()):
+                if dGr_dict[rxn] >= 0:
+                    dGr_val = dGr_dict[rxn]/dGr_max
+                else:
+                    dGr_val = 1
+                print('test',dGr_val)
+                new_var = mdl.problem.Variable('abs_dGr_'+rxn.id)
+                new_constraint = mdl.problem.Constraint(rxn.forward_variable*dGr_val + rxn.reverse_variable*dGr_val - new_var,
+                                        name='abs_dGr_constraint_'+rxn.id,
+                                        ub=0,
+                                        lb=0)
+                mdl.add_cons_vars([new_var,new_constraint])
+                obj_dict[new_var] = -1
+                # obj_dict[new_var] = -10
+
+            # 3.3 preventing the flux of reactions in direction that consume target metabolite
+            # target_meta = mdl.metabolites.get_by_id(objective_meta_entry)
+            # for rxn in rxns_lvl_2:
+            #     stoich = rxn.metabolites
+            #     subs = []
+            #     prods = []
+            #     for key in list(stoich.keys()):
+            #         if stoich[key] > 0:
+            #             prods.append(key)
+            #         elif stoich[key] < 0:
+            #             subs.append(key)
+            #     if target_meta in prods:
+            #         rxn.upper_bound = 0
+            #     elif target_meta in subs:
+            #         rxn.lower_bound = 0
+
+            print('removing total flux minimization variables and constraints...')
+            # mdl.remove_cons_vars([tot_flux_vars,tot_flux_consts])
+            for var in tot_flux_vars:
+                del obj_dict[var]
+            for var in path_opt_vars:
+                try:
+                    del obj_dict[var]
+                except Exception as e:
+                    pass
+            for var in substrate_opt_vars:
+                try:
+                    del obj_dict[var]
+                except Exception as e:
+                    pass
+
+            rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
+            obj_dict[rxn.forward_variable] = len(list(dGr_dict.keys()))
+            obj_dict[rxn.reverse_variable] = -len(list(dGr_dict.keys()))
+
+            print('removed total flux minimization variables and constraints')
+
+            # 3.4 Generating optimization target based on enzyme alternative reactions
+
+            # 3.5 Shutting down reactions that are below minimum theoretical stoichiometry
+            # max_stoich_val = 0
+            # for rxn in rxns_lvl_2:
+            #     stoich_vals = list(rxn.metabolites.values())
+            #     for val in stoich_vals:
+            #         if val > max_stoich_val:
+            #             max_stoich_val = val
+
+            # minor_rxn_entries = [x for x in int_fluxes_lvl_1.index if abs(round(int_fluxes_lvl_1[x])) < 1000/max_stoich_val and x in list(map(lambda y: y.id,rxns_lvl_2))]
+            # print('minor_rxn_entries',max_stoich_val,minor_rxn_entries)
+            # for rxn_entry in minor_rxn_entries:
+            #     mdl.reactions.get_by_id(rxn_entry).upper_bound = 0
+            #     mdl.reactions.get_by_id(rxn_entry).lower_bound = 0
+
+            # 3.6 Restricts target metabolite production to only the reactions that have the greatest production flux
+            target_meta = mdl.metabolites.get_by_id(objective_meta_entry)
+            direct_target_prod_rxns = {}
+            for rxn in rxns_lvl_2:
+                stoich = rxn.metabolites
+                subs = []
+                prods = []
+                for key in list(stoich.keys()):
+                    if stoich[key] > 0:
+                        prods.append(key)
+                    elif stoich[key] < 0:
+                        subs.append(key)
+                if target_meta in prods or target_meta in subs:
+                    direct_target_prod_rxns[rxn] = int_fluxes_lvl_1[rxn.id]
+
+            print('test3',list(direct_target_prod_rxns.values()))
+            max_direct_target_prod_flux = max(list(direct_target_prod_rxns.values()))
+            for rxn in list(direct_target_prod_rxns.keys()):
+                if direct_target_prod_rxns[rxn] < max_direct_target_prod_flux:
+                    mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+                    mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+
+            # 3.7 Shutting down fluxes that produce substrate metabolites
+            # substrate_metas = [mdl.metabolites.get_by_id(x) for x in substrate_meta_entries]
+            # for rxn in rxns_lvl_2:
+            #     stoich = rxn.metabolites
+            #     subs = []
+            #     prods = []
+            #     for key in list(stoich.keys()):
+            #         if stoich[key] > 0:
+            #             prods.append(key)
+            #         elif stoich[key] < 0:
+            #             subs.append(key)
+            #     for meta in substrate_metas:
+            #         print('subs and prods',meta,subs,prods)
+            #         if meta in prods:
+            #             mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+            #         elif meta in subs:
+            #             mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+
+            # 3.8 Print COBRA model metrics and solve level 2
+            print('obj_dict lvl_2',obj_dict)
+            mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
+            mdl.solver.objective.set_linear_coefficients(obj_dict)
+            lvl_2_res = self.mass_balance_sln = mdl.optimize()
+            print('objective_value lvl_2',lvl_2_res.objective_value)
+
+            fluxes_lvl_2 = self.mass_balance_sln.fluxes
+            int_fluxes_lvl_2 = fluxes_lvl_2.loc[[x for x in fluxes_lvl_2.index if 'SK_' not in x]]
+            bnd_fluxes_lvl_2 = fluxes_lvl_2.loc[[x for x in fluxes_lvl_2.index if 'SK_' in x]]
+            rel_int_fluxes_lvl_2 = int_fluxes_lvl_2.loc[[x for x in int_fluxes_lvl_2.index if round(int_fluxes_lvl_2[x]) != 0]]
+            rel_bnd_fluxes_lvl_2 = bnd_fluxes_lvl_2.loc[[x for x in bnd_fluxes_lvl_2.index if round(bnd_fluxes_lvl_2[x]) != 0]]
+            print('number of internal rxns used (lvl_2): ',(round(int_fluxes_lvl_2)!=0).sum())
+            print('number of boundary rxns used (lvl_2): ',(round(bnd_fluxes_lvl_2)!=0).sum())
+            print('int_fluxes (lvl_2): ',rel_int_fluxes_lvl_2.to_markdown())
+            print('bnd_fluxes (lvl_2): ',rel_bnd_fluxes_lvl_2.to_markdown())
+
+            # 4. If internal loop with no exchange reactions:
+            if (round(bnd_fluxes_lvl_2)!=0).sum() == 0:
+                print('mandating exchange fluxes')
+                # 4.1 Create optimization for objective metabolite exchange reaction that mandates exchange reactions
+                rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
+                obj_dict[rxn.forward_variable] = (round(int_fluxes_lvl_2)!=0).sum()
+                obj_dict[rxn.reverse_variable] = -(round(int_fluxes_lvl_2)!=0).sum()
+
+                # 4.2 Create optimization objective for substrate exchange reactions that mandates exchange reactions
+                for sub_meta_entry in substrate_meta_entries:
+                    rxn: Reaction = mdl.reactions.get_by_id('SK_'+sub_meta_entry)
+                    obj_dict[rxn.forward_variable] = -(round(int_fluxes_lvl_2)!=0).sum()
+                    obj_dict[rxn.reverse_variable] = (round(int_fluxes_lvl_2)!=0).sum()
+
+                # 4.3 Print COBRA model metrics and solve level 3
+                print('obj_dict lvl_3',obj_dict)
+                mdl.objective = mdl.problem.Objective(Zero, sloppy=True, direction="max")
+                mdl.solver.objective.set_linear_coefficients(obj_dict)
+                lvl_3_res = self.mass_balance_sln = mdl.optimize()
+                print('objective_value lvl_3',lvl_3_res.objective_value)
+
+                fluxes_lvl_3 = self.mass_balance_sln.fluxes
+                int_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' not in x]]
+                bnd_fluxes_lvl_3 = fluxes_lvl_3.loc[[x for x in fluxes_lvl_3.index if 'SK_' in x]]
+                rel_int_fluxes_lvl_3 = int_fluxes_lvl_3.loc[[x for x in int_fluxes_lvl_3.index if round(int_fluxes_lvl_3[x]) != 0]]
+                rel_bnd_fluxes_lvl_3 = bnd_fluxes_lvl_3.loc[[x for x in bnd_fluxes_lvl_3.index if round(bnd_fluxes_lvl_3[x]) != 0]]
+                print('number of internal rxns used (lvl_3): ',(round(int_fluxes_lvl_3)!=0).sum())
+                print('number of boundary rxns used (lvl_3): ',(round(bnd_fluxes_lvl_3)!=0).sum())
+                print('int_fluxes (lvl_3): ',rel_int_fluxes_lvl_3.to_markdown())
+                print('bnd_fluxes (lvl_3): ',rel_bnd_fluxes_lvl_3.to_markdown())
+
+            
+
+        # Compare balanced networks that get to target metabolite from each given substrate, try to consolidate into most efficient 
+        # pathway that uses some combination of all of the substrate metabolites
+
+        return
 
     # balances reaction network
-    def __solve_optimal_reaction_network(self,objective_meta_entries:list[str],
+    def __rank_candidate_networks(self,objective_meta_entries:list[str],
                                          substrate_meta_entries:list[str],
                                          boundary_metabolite_entries:list[str],
                                          manual_zero_flux_rxns:list[str],
                                          opt_weights:dict[str,float]) -> None:
-        """testing to make sure only necessary sinks exist"""
+        """STARTHERE: try methods to get better network:
+        1. Prune (set to 0) the smallest fluxes
+        2. Brute-force required substrate combinations
+        3. Try assuming no other exchange other than those outputted
+        4. Try assuming that all substrates are utilized
+        """
 
         # 1. Set constraints for COBRA model - fully shut down certain reaction fluxes
-        for bnd_meta in manual_zero_flux_rxns:
-            rxn = self.__COBRA_model.reactions.get_by_id(bnd_meta)
-            rxn.lower_bound = 0
-            rxn.upper_bound = 0
 
-        # 2. Set objectives for COBRA model - multiple objectives
-        obj_dict = {}
-        # 2.1 Create optimization objective for objective_meta_entries
-        for obj_meta_entry in objective_meta_entries:
-            meta: Metabolite = self.__COBRA_model.metabolites.get_by_id(obj_meta_entry)
-            rxn: Reaction = self.__COBRA_model.reactions.get_by_id('SK_'+meta.id)
-            obj_dict[rxn.forward_variable] = opt_weights['objective_meta']
-            obj_dict[rxn.reverse_variable] = -opt_weights['objective_meta']
-        # 2.2 Create optimization objective for substrate_metabolite_entries
-        for sub_meta_entry in substrate_meta_entries:
-            meta: Metabolite = self.__COBRA_model.metabolites.get_by_id(sub_meta_entry)
-            rxn: Reaction = self.__COBRA_model.reactions.get_by_id('SK_'+meta.id)
-            obj_dict[rxn.forward_variable] = -opt_weights['substrate_meta']
-            obj_dict[rxn.reverse_variable] = opt_weights['substrate_meta']
-        # 2.3 Create optimization objective for number of total non-zero reactions
-        # rxn_num_var = self.__COBRA_model.problem.Variable('non_zero_rxn_num_var')
-        # # rxn_num_var_constraint = self.__COBRA_model.problem.Constraint(rxn_num_var - sum([rxn.forward_variable for rxn in self.__COBRA_model.reactions]),
-        # rxn_num_var_constraint = self.__COBRA_model.problem.Constraint(rxn_num_var - sum(x != 0 for x in [rxn.forward_variable-rxn.reverse_variable for rxn in self.__COBRA_model.reactions]),
-        #                                                                name='non_zero_num_constraint',
-        #                                                                ub=0,
-        #                                                                lb=0)
-        # print('test2',sum(x != 0 for x in [rxn.forward_variable-rxn.reverse_variable for rxn in self.__COBRA_model.reactions]))
-        # self.__COBRA_model.add_cons_vars([rxn_num_var])
-        # add_cons_vars_to_problem(self.__COBRA_model,rxn_num_var_constraint)
-        # obj_dict[rxn_num_var] = opt_weights['non_zero_rxns']
-        # print('rxn_num_var_constraint: ',rxn_num_var_constraint)
 
-        # # 2.4 Create optimization objective for number of exchange reactions
-        # ex_rxn_num_var = self.__COBRA_model.problem.Variable('non_zero_ex_rxn_num_var')
-        # ex_rxn_num_var_constraint = self.__COBRA_model.problem.Constraint(ex_rxn_num_var - sum(x != 0 for x in [rxn.forward_variable for rxn in self.__COBRA_model.boundary]),
-        #                                                                name='non_zero_ex_num_constraint',
-        #                                                                ub=0,
-        #                                                                lb=0)
-        # self.__COBRA_model.add_cons_vars([ex_rxn_num_var])
-        # add_cons_vars_to_problem(self.__COBRA_model,ex_rxn_num_var_constraint)
-        # obj_dict[rxn_num_var] = opt_weights['non_zero_ex_rxns']
-        # print('ex_rxn_num_var_constraint: ',ex_rxn_num_var_constraint)
-
-        # 6. Print COBRA model metrics and solve
-        print("Reactions")
-        print("---------")
-        for x in self.__COBRA_model.reactions:
-            print("%s : %s" % (x.id, x.reaction))
-
-        print("Metabolites")
-        print("-----------")
-        for x in self.__COBRA_model.metabolites:
-            print('%9s : %s : %s' % (x.id, len(x.reactions), x.name))
-
-        # self.__COBRA_model.objective = 'SK_'+objective_meta_entry
-        # self.__COBRA_model.objective.direction = 'max'
-        self.__COBRA_model.solver.objective.set_linear_coefficients(obj_dict)
-        print('test',self.__COBRA_model.solver.objective.direction)
-        self.mass_balance_sln = self.__COBRA_model.optimize()
-
-        # print('rxn_num_var_constraint end: ',rxn_num_var_constraint)
-        # print('ex_rxn_num_var_constraint end: ',ex_rxn_num_var_constraint)
-
-        print(self.mass_balance_sln.fluxes.to_markdown())
-
-        return self.mass_balance_sln
+        return
 
     def seek_optimal_network(self,
-                             objective_metabolite_entries:list[str],
+                             objective_metabolite_entry:str,
                              substrate_metabolite_entries:list[str],
-                             optimization_weights:dict[str,float]) -> Solution:
-        self.__solve_optimal_reaction_network(objective_meta_entries=objective_metabolite_entries,
-                                              substrate_meta_entries=substrate_metabolite_entries,
-                                              boundary_metabolite_entries=[],
-                                              manual_zero_flux_rxns=[],
-                                              opt_weights=optimization_weights)
-        return self.__COBRA_model.optimize()
+                             min_enzyme_ct:int,
+                             max_enzyme_ct:int) -> Solution:
+        has_paths = []
+        for meta in [x for x in substrate_metabolite_entries if x not in self.__common_metabolite_entries]:
+            has_paths.append(nx.has_path(self.__path_Graph,meta,objective_metabolite_entry))
+        if not any(has_paths):
+            print('No simple path found between substrates and objective metabolite, exiting function.')
+            return
+
+        # find potential paths between substrate(s) and objective metabolite
+        candidate_paths = self.__find_shortest_simple_paths(objective_meta_entry=objective_metabolite_entry,
+                                                            substrate_meta_entries=substrate_metabolite_entries,
+                                                            min_enzyme_ct=min_enzyme_ct,
+                                                            max_enzyme_ct=max_enzyme_ct)
+
+        # balance all candidate paths
+        self.__balance_candidate_networks(candidate_paths=candidate_paths,
+                                          objective_meta_entry=objective_metabolite_entry,
+                                          substrate_meta_entries=substrate_metabolite_entries)
+
+        # self.__rank_candidate_networks(objective_meta_entries=objective_metabolite_entries,
+        #                                       substrate_meta_entries=substrate_metabolite_entries,
+        #                                       boundary_metabolite_entries=objective_metabolite_entries+substrate_metabolite_entries,
+        #                                       manual_zero_flux_rxns=[],
+        #                                       opt_weights=optimization_weights)
+
+        return self.__COBRA_model
 
     def assess_enzyme_promiscuity(self) -> None:
         return

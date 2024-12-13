@@ -3,6 +3,7 @@ sys.path.append('../../Lib')
 from pyvis.network import Network
 import networkx as nx
 import json
+import pandas as pd
 
 from cobra import Metabolite
 
@@ -17,13 +18,6 @@ from MPNG_Enzyme import MPNG_Enzyme
 
 class WholeCellConsortiumModel:
     def __init__(self):
-        # meta_entries = []
-        # for x in range(10000):
-        #     zeros = '0'*(5-len(str(x)))
-        #     meta_entries.append('C'+zeros+str(x))
-
-        # [metabolites,[],[]] = parse_KEGG(meta_entries)
-
         self.__metabolites: dict[str,MPNG_Metabolite] = {}
         self.__reactions: dict[str,MPNG_Reaction] = {}
         self.__enzymes: dict[str,MPNG_Enzyme] = {}
@@ -41,11 +35,11 @@ class WholeCellConsortiumModel:
             enz_data = json.load(f)
             for x in enz_data:
                 new_enz = MPNG_Enzyme.fromJSON(dict_from_json=json.loads(x))
-                self.__enzymes[new_meta.entry] = new_enz
+                self.__enzymes[new_enz.entry] = new_enz
         print('number of metabolites: ',len(list(self.__metabolites.keys())))
         print('number of reactions: ',len(list(self.__reactions.keys())))
 
-        self.__common_metabolite_entries = ['C00138','C00139','C00080','C00024']
+        self.__common_metabolite_entries = ['C00138','C00139','C00080','C00024','C00125','C00126']
         for x in range(14):
             zeros = '0'*(5-len(str(x+1)))
             self.__common_metabolite_entries.append('C'+zeros+str(x+1))
@@ -54,10 +48,20 @@ class WholeCellConsortiumModel:
         self.__graphs: dict[str,MetabolicPathwayNetworkGraph] = {}
         self.__whole_KEGG_graph = nx.DiGraph()
 
-        for idx,x in enumerate(self.__get_reactions('all')):
-            self.add_reaction(x)
+        self.__excluded_metabolite_entries = ['C00002','C00008']
+        for meta in list(self.__metabolites.values()):
+            if meta.generic:
+                self.__excluded_metabolite_entries.append(meta.entry)
 
-        return
+        for idx,x in enumerate(self.__get_reactions('all')):
+            meta_ids = list(map(lambda y: y.id,list(x.stoich.keys())))
+            if all([z not in meta_ids for z in self.__excluded_metabolite_entries]):
+                self.add_reaction(x)
+
+        # this is set based on manual curation of KEGG BRITE heirarchy
+        self.__generic_compound_assignments = {
+
+        }
 
     @property
     def metabolites(self) -> dict[str,MPNG_Metabolite]:
@@ -82,6 +86,10 @@ class WholeCellConsortiumModel:
     @enzymes.setter
     def enzymes(self,enz:dict[str,MPNG_Enzyme]) -> None:
         self.__enzymes = enz
+
+    @property
+    def generic_compound_assignments(self) -> dict[str,str]:
+        return self.__generic_compound_assignments
 
     def __get_metabolites(self,entries:str|list) -> MPNG_Metabolite | list[MPNG_Metabolite]:
         if type(entries) == str:
@@ -150,7 +158,40 @@ class WholeCellConsortiumModel:
                     stoich=stoich[list(stoich.keys())[key_entries.index(m)]]
                 )
 
-    def explore_products_from_substrates(self,root_metabolite_entries:list[str]) -> None:
+    def identify_generic_compounds(self) -> pd.DataFrame:
+        generic_metas = pd.DataFrame([])
+        for idx,meta in enumerate(list(self.__metabolites.values())):
+            if meta.generic:
+                generic_metas.loc[idx] = [meta.entry,meta.names[0]]
+        print(generic_metas.to_markdown())
+        return self.generic_compound_assignments
+
+    def generate_generic_rxns(self) -> None:
+        # adding reactions of generic compounds to metas and creating dict of generic-to-specific metas
+        generic_to_specific_metas = {}
+        for meta in list(self.__metabolites.values()):
+            for lvl in list(meta.BRITE_dict.values()):
+                if lvl in list(self.__generic_compound_assignments.keys()):
+                    if self.__generic_compound_assignments[lvl] not in list(generic_to_specific_metas.keys()):
+                        generic_to_specific_metas[self.__generic_compound_assignments[lvl]] = []
+                    generic_to_specific_metas[self.__generic_compound_assignments[lvl]] += meta.entry
+                    meta.add_reactions(self.__generic_compound_assignments[lvl])
+
+        ### STARTHERE: how to do this?
+        # creating MPNG_Reaction objects for specified generic reactions
+        generic_rxns = {}
+        for meta in list(self.__metabolites.values()):
+            for rxn in meta.reactions:
+                generic_rxns[rxn] += meta.entry
+
+        for rxn in list(generic_rxns.keys()):
+            return
+        return
+
+    def set_reaction_reversibility(self) -> None:
+        # checking whether each enzyme is reversible
+        for key in list(self.__reactions.keys()):
+            self.reactions[key].check_reversibility(list(self.__enzymes.values()))
         return
 
     def generate_whole_network(self,network_name:str) -> MetabolicPathwayNetworkGraph:
@@ -158,7 +199,9 @@ class WholeCellConsortiumModel:
         self.__graphs[network_name] = MetabolicPathwayNetworkGraph(network_name)
 
         for rxn in self.__get_reactions('all'):
-            self.__graphs[network_name].add_reaction(rxn,[self.__get_metabolites(meta) for meta in list(map(lambda x: x.id,list(rxn.stoich.keys()))) if 'G' not in meta and '(' not in meta])
+            meta_ids = list(map(lambda y: y.id,list(rxn.stoich.keys())))
+            if all([z not in meta_ids for z in self.__excluded_metabolite_entries]):
+                self.__graphs[network_name].add_reaction(rxn,[self.__get_metabolites(meta) for meta in list(map(lambda x: x.id,list(rxn.stoich.keys()))) if 'G' not in meta and '(' not in meta])
 
         self.__graphs[network_name].generate_COBRA_model()
 
@@ -168,19 +211,13 @@ class WholeCellConsortiumModel:
                              network_name:str,
                              objective_meta_entries:list[str],
                              substrate_metabolite_entries:list[str],
-                             objective_meta_opt_weight:float,
-                             substrate_meta_opt_weight:float,
-                             non_zero_rxns_opt_weight:float,
-                             non_zero_ex_rxns_opt_weight:float) -> None:
+                             min_enzyme_ct:int,
+                             max_enzyme_ct:int) -> None:
         # 1. Find optimal network via constrained mass balance
-        self.__graphs[network_name].seek_optimal_network(objective_metabolite_entries=objective_meta_entries,
+        self.__graphs[network_name].seek_optimal_network(objective_metabolite_entry=objective_meta_entries[0],
                                                      substrate_metabolite_entries=substrate_metabolite_entries,
-                                                     optimization_weights={
-                                                         'objective_meta':objective_meta_opt_weight,
-                                                         'substrate_meta':substrate_meta_opt_weight,
-                                                         'non_zero_rxns':non_zero_rxns_opt_weight,
-                                                         'non_zero_ex_rxns':non_zero_ex_rxns_opt_weight
-                                                         })
+                                                     min_enzyme_ct=min_enzyme_ct,
+                                                     max_enzyme_ct=max_enzyme_ct)
 
         # Task 2: implement thermodynamic feasibility constraints
 
@@ -201,34 +238,44 @@ class WholeCellConsortiumModel:
     def visualize_graph(self,network_name:str) -> None:
         MPNG_net = self.__graphs[network_name]
         MPNG_net.vis_Network = Network()
+        ct = 0
         for idx,co_rxn in enumerate(MPNG_net.COBRA_model.reactions):
             flux_val = MPNG_net.mass_balance_sln.fluxes[co_rxn.id]
             # adding edges to slim graph
-            if round(flux_val) != 0:
+            if abs(round(flux_val)):
+                ct += 1
+                print(ct)
                 if len([rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id]) == 0:
                     continue
                 rxn = [rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id][0]
-                if rxn.entry+'_'+rxn.enzyme_id[0] in MPNG_net.vis_Network.get_nodes():
-                    MPNG_net.vis_Network.get_node(rxn.entry+'_'+rxn.enzyme_id[0])['label'] = MPNG_net.vis_Network.get_node(rxn.entry+'_'+rxn.enzyme_id[0])['label']+str('; enz_f: '+str(round(abs(flux_val))))
+                if rxn.entry+'_'+list(rxn.enzyme_id.keys())[0] in MPNG_net.vis_Network.get_nodes():
+                    MPNG_net.vis_Network.get_node(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0])['label'] = MPNG_net.vis_Network.get_node(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0])['label']+str('; enz_f: '+str(round(abs(flux_val))))
                 else:
-                    MPNG_net.vis_Network.add_node(rxn.entry+'_'+rxn.enzyme_id[0],rxn.entry+'_'+rxn.enzyme_id[0]+'; enz_f: '+str(round(abs(flux_val))),shape='box')
+                    MPNG_net.vis_Network.add_node(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],rxn.entry+'_'+list(rxn.enzyme_id.keys())[0]+'; enz_f: '+str(round(abs(flux_val))),shape='box')
                 for meta in list(co_rxn.metabolites.keys()):
                     if meta.id in self.common_metabolites:
                         MPNG_net.vis_Network.add_node(meta.id+'_'+str(idx),[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
                     else:
-                        MPNG_net.vis_Network.add_node(meta.id,[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
-                    if co_rxn.metabolites[meta] < 0:
-                        arrow_dir = 'to' if round(flux_val) > 0 else 'from'
-                        if meta.id in self.common_metabolites:
-                            MPNG_net.vis_Network.add_edge(meta.id+'_'+str(idx),rxn.entry+'_'+rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
-                        else:
-                            MPNG_net.vis_Network.add_edge(meta.id,rxn.entry+'_'+rxn.enzyme_id[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
-                    elif co_rxn.metabolites[meta] > 0:
-                        arrow_dir = 'to' if round(flux_val) > 0 else 'from'
-                        if meta.id in self.common_metabolites:
-                            MPNG_net.vis_Network.add_edge(rxn.entry+'_'+rxn.enzyme_id[0],meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
-                        else:
-                            MPNG_net.vis_Network.add_edge(rxn.entry+'_'+rxn.enzyme_id[0],meta.id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                        # print('graph_test',meta.id,[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id])
+                        try:
+                            MPNG_net.vis_Network.add_node(meta.id,[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
+                        except Exception as e:
+                            print('Glycan node in model, no name.',e)
+                    try:
+                        if co_rxn.metabolites[meta] < 0:
+                            arrow_dir = 'to' if round(flux_val) > 0 else 'from'
+                            if meta.id in self.common_metabolites:
+                                MPNG_net.vis_Network.add_edge(meta.id+'_'+str(idx),rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                            else:
+                                MPNG_net.vis_Network.add_edge(meta.id,rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                        elif co_rxn.metabolites[meta] > 0:
+                            arrow_dir = 'to' if round(flux_val) > 0 else 'from'
+                            if meta.id in self.common_metabolites:
+                                MPNG_net.vis_Network.add_edge(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                            else:
+                                MPNG_net.vis_Network.add_edge(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],meta.id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                    except Exception as e:
+                        print('Glycan edge in model, no name.',e)
 
         MPNG_net.vis_Network.layout = False
         MPNG_net.vis_Network.options.physics.enabled = True

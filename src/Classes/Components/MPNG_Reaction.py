@@ -19,12 +19,14 @@ class MPNG_Reaction:
 
     # Enzyme
 
-    def __init__(self,entry,names,definition,equation,enzyme_id) -> None:
+    def __init__(self,entry:str,names:list[str],definition:str,equation:str,enzyme_id:list[str]) -> None:
         self.__entry = entry
         self.__names = names
         self.__definition = definition
         self.__equation = equation
-        self.__enzyme_id = enzyme_id
+        self.__enzyme_id = {x:True for x in enzyme_id}
+
+        self.__reversible = True
 
         [self.__stoich] = self.parse_equation()
         # self.__dGr_prime = cc.dg_prime(self.__equil_rxn)
@@ -68,6 +70,19 @@ class MPNG_Reaction:
     @property
     def enzyme_id(self) -> str:
         return self.__enzyme_id
+
+    @property
+    def reversible(self) -> bool:
+        return self.__reversible
+
+    @reversible.setter
+    def reversible(self,is_rev:bool) -> None:
+        self.__reversible = is_rev
+
+    def check_reversibility(self,enz_objs:list[MPNG_Enzyme]) -> None:
+        for enz in self.__enzyme_id:
+            # STARTHERE: check if present reaction catalyzed by each enzyme is reversible
+            return
 
     def parse_equation(self) -> dict:
         [sub_str,prod_str] = re.split('<=>',self.__equation)

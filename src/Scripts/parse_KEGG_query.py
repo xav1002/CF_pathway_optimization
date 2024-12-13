@@ -17,6 +17,7 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
             query_items_all.append(x)
         else:
             query_type = 'E'
+            query_items_all.append(x)
 
     metabolites: list = []
     reactions: list = []
@@ -56,6 +57,9 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                     rxn_names: list = []
                     MW = 0.0
                     formula = ''
+                    is_generic = False
+                    BRITE_lvl = 0
+                    BRITE_dict = {}
                     for line_level_1 in req_3:
                         line_level_1 = line_level_1.strip()
 
@@ -70,7 +74,7 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                         elif line_level_1.startswith("REMARK"):
                             category = ""
                         elif line_level_1.startswith("COMMENT"):
-                            category = ""
+                            category = "COMMENT"
                         elif line_level_1.startswith("MODULE"):
                             category = ""
                         elif line_level_1.startswith("EXACT_MASS"):
@@ -90,7 +94,7 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                         elif line_level_1.startswith("TYPE"):
                             category = ""
                         elif line_level_1.startswith("BRITE"):
-                            category = ""
+                            category = "BRITE"
                         elif line_level_1.startswith("ATOM"):
                             category = ""
                         elif line_level_1.startswith("BOND"):
@@ -113,7 +117,15 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                                 MW = float(line_level_1.replace("MOL_WEIGHT","").strip())
                             elif category == "REACTION":
                                 rxn_names = rxn_names+list(filter(lambda x: x!='',list(map(lambda x: x.strip(),re.split(' ',line_level_1.replace("REACTION",""))))))
-                    metabolites.append(MPNG_Metabolite(entry,names,formula,MW,rxn_names))
+                            elif category == "COMMENT":
+                                if 'Generic compound in reaction hierarchy' in line_level_1:
+                                    is_generic = True
+                                else:
+                                    is_generic = False
+                            elif category == "BRITE":
+                                BRITE_lvl += 1
+                                BRITE_dict[BRITE_lvl] = line_level_1.replace("BRITE","").strip()
+                    metabolites.append(MPNG_Metabolite(entry,names,formula,MW,rxn_names,is_generic,BRITE_dict))
 
                 # MPNG_Reaction
                 case 'R':
@@ -161,6 +173,7 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                 # MPNG_Enzyme
                 case 'E':
                     names: list = []
+                    enz_rxn_ids: list = []
                     substrates: list = []
                     products: list = []
                     sysname = ''
@@ -203,12 +216,18 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                             elif category == "SUBSTRATE":
                                 substrates = substrates+list(filter(lambda x: x!='',re.split(';',line_level_1.replace("SUBSTRATE","").strip())))
                             elif category == "PRODUCT":
-                                products = products+list(filter(lambda x: x!='',re.split(';',line_level_1.replace("PRODUCT","").strip())))                
-                    enzymes.append(MPNG_Enzyme(entry,names,sysname,substrates,products))
+                                products = products+list(filter(lambda x: x!='',re.split(';',line_level_1.replace("PRODUCT","").strip())))
+                            elif category == "REACTION":
+                                enz_rxn_ids = enz_rxn_ids+list(filter(lambda x: x!='',re.split(' ',line_level_1.
+                                                                                           replace("ALL_REAC","").
+                                                                                           replace("(other)","").
+                                                                                           replace(">"," ").strip())))
+                    enzymes.append(MPNG_Enzyme(entry,names,sysname,enz_rxn_ids,substrates,products))
                 case 'Glycan':
                     test = 1
 
         # attrs = vars(enzymes[0])
         # print(', '.join("%s: %s" % item for item in attrs.items()))
 
-    return (metabolites,reactions,enzymes)
+    print([metabolites,reactions,enzymes])
+    return [metabolites,reactions,enzymes]
