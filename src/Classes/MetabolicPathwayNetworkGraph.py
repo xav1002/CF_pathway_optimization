@@ -223,8 +223,10 @@ class MetabolicPathwayNetworkGraph:
 
     def add_reaction(self,new_reaction:MPNG_Reaction,new_metabolites:list[MPNG_Metabolite]) -> None:
         # add MPNG_Reaction to MPNG
+        new_reaction.check_reversibility_local()
         self.reactions = new_reaction
-        rxn_number = new_reaction.enzyme_id[0]+':'+new_reaction.entry+'_'+str(len(self.__reactions.keys()))
+        print('add_reaction',new_reaction.enzyme_id)
+        # rxn_number = new_reaction.enzyme_id[0]+':'+new_reaction.entry+'_'+str(len(self.__reactions.keys()))
         # add to NX Graph
         self.__vis_Graph.add_node(node_for_adding=new_reaction.entry,id=len(self.__vis_Graph.nodes))
         self.__path_Graph.add_node(node_for_adding=new_reaction.entry+'_f',id=len(self.__path_Graph.nodes))
@@ -312,7 +314,7 @@ class MetabolicPathwayNetworkGraph:
         self.__COBRA_model.remove_reactions(boundary_rxns)
         for meta in self.__COBRA_model.metabolites:
             try:
-                self.__COBRA_model.add_boundary(meta,type='sink',lb=None,ub=None)
+                self.__COBRA_model.add_boundary(meta,type='sink',lb=-1000,ub=1000)
             except Exception as e:
                 pass
         print('COBRA model ready')
@@ -335,12 +337,17 @@ class MetabolicPathwayNetworkGraph:
             for rxn in [x for x in mdl.boundary if re.split('_',x.id)[1] not in bnd_meta_entries and re.split('_',x.id)[1] not in self.__small_gas_metas]:
                 mdl.reactions.get_by_id(rxn.id).lower_bound = 0
                 # only prevents intake of non-substrate metabolites, doesn't prevent production of other metabolites
-                # mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+                mdl.reactions.get_by_id(rxn.id).upper_bound = 0
 
             # Shutting down reverse reactions that are infeasible according to BRENDA
             for rxn in [x for x in mdl.reactions if x not in mdl.boundary]:
-                if rxn.reversible == False:
-                    mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+                print('test',self.__reactions[rxn.id].forward_valid,self.__reactions[rxn.id].backward_valid)
+                if self.__reactions[rxn.id].forward_valid:
+                    mdl.reactions.get_by_id(rxn.id).upper_bound = 1000
+                else: mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+                if self.__reactions[rxn.id].backward_valid:
+                    mdl.reactions.get_by_id(rxn.id).lower_bound = -1000
+                else: mdl.reactions.get_by_id(rxn.id).lower_bound = 0
 
             obj_dict = {}
             # 2.1 Create optimization objective for reactions on path
@@ -408,9 +415,9 @@ class MetabolicPathwayNetworkGraph:
                     mdl.reactions.get_by_id(rxn.id).upper_bound = 0
 
             # 2.6 Restricting non-reversible reactions
-            mdl.reactions.get_by_id('R00224').lower_bound = 0
-            mdl.reactions.get_by_id('R03145').lower_bound = 0
-            mdl.reactions.get_by_id('R11074').lower_bound = 0
+            # mdl.reactions.get_by_id('R00224').lower_bound = 0
+            # mdl.reactions.get_by_id('R03145').lower_bound = 0
+            # mdl.reactions.get_by_id('R11074').lower_bound = 0
 
             # 2.7 Print COBRA model metrics and solve level 1
             print('obj_dict lvl_1',obj_dict)

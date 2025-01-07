@@ -19,14 +19,16 @@ class MPNG_Reaction:
 
     # Enzyme
 
-    def __init__(self,entry:str,names:list[str],definition:str,equation:str,enzyme_id:list[str]) -> None:
+    def __init__(self,entry:str,names:list[str],definition:str,equation:str,enzyme_id:list[str],forward_valid:bool,backward_valid:bool) -> None:
         self.__entry = entry
         self.__names = names
         self.__definition = definition
         self.__equation = equation
-        self.__enzyme_id = {x:True for x in enzyme_id}
+        self.__enzyme_id = {x:'both' for x in enzyme_id}
 
-        self.__reversible = True
+        # self.__reversible = True
+        self.__forward_valid = forward_valid
+        self.__backward_valid = backward_valid
 
         [self.__stoich] = self.parse_equation()
         # self.__dGr_prime = cc.dg_prime(self.__equil_rxn)
@@ -79,10 +81,38 @@ class MPNG_Reaction:
     def reversible(self,is_rev:bool) -> None:
         self.__reversible = is_rev
 
-    def check_reversibility(self,enz_objs:list[MPNG_Enzyme]) -> None:
-        for enz in self.__enzyme_id:
-            # STARTHERE: check if present reaction catalyzed by each enzyme is reversible
-            return
+    @property
+    def forward_valid(self) -> bool:
+        return self.__forward_valid
+
+    @property
+    def backward_valid(self) -> bool:
+        return self.__backward_valid
+
+    def check_reversibility(self,enz_entry:str,rev_dict:dict[str,bool]) -> None:
+        print('rev_dict',rev_dict)
+        self.__enzyme_id[enz_entry] = rev_dict[self.__entry]
+        print('enzyme_id',self.__enzyme_id)
+        if 'forward' in list(self.__enzyme_id.values()):
+            self.__forward_valid = True
+        else: self.__forward_valid = False
+        if 'backward' in list(self.__enzyme_id.values()):
+            self.__backward_valid = True
+        else: self.__backward_valid = False
+        if 'both' in list(self.__enzyme_id.values()):
+            self.__forward_valid = True
+            self.__backward_valid = True
+
+    def check_reversibility_local(self) -> None:
+        if 'forward' in list(self.__enzyme_id.values()):
+            self.__forward_valid = True
+        else: self.__forward_valid = False
+        if 'backward' in list(self.__enzyme_id.values()):
+            self.__backward_valid = True
+        else: self.__backward_valid = False
+        if 'both' in list(self.__enzyme_id.values()):
+            self.__forward_valid = True
+            self.__backward_valid = True
 
     def parse_equation(self) -> dict:
         [sub_str,prod_str] = re.split('<=>',self.__equation)
@@ -134,11 +164,14 @@ class MPNG_Reaction:
                     'definition':self.__definition,
                     'equation':self.__equation,
                     'enzyme_id':self.__enzyme_id,
+                    'forward_valid':self.__forward_valid,
+                    'backward_valid':self.__backward_valid
                     # 'conc':self.__conc,
                     # 'explored':self.__explored
                 })
 
     def fromJSON(dict_from_json):
         rxn = MPNG_Reaction(dict_from_json['entry'],dict_from_json['names'],
-                               dict_from_json['definition'],dict_from_json['equation'],dict_from_json['enzyme_id'],)
+                               dict_from_json['definition'],dict_from_json['equation'],dict_from_json['enzyme_id'],
+                               dict_from_json['forward_valid'],dict_from_json['backward_valid'])
         return rxn

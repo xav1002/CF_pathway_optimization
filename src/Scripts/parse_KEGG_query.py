@@ -168,7 +168,7 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                             elif line_level_1.startswith("ENZYME"):
                                 enzyme_id = list(set(re.split(' ',line_level_1.replace("ENZYME","").strip())))
                                 while '' in enzyme_id: enzyme_id.remove('')
-                    reactions.append(MPNG_Reaction(entry,names,definition,equation,enzyme_id))
+                    reactions.append(MPNG_Reaction(entry,names,definition,equation,enzyme_id,True,True))
 
                 # MPNG_Enzyme
                 case 'E':
@@ -221,7 +221,8 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                                 enz_rxn_ids = enz_rxn_ids+list(filter(lambda x: x!='',re.split(' ',line_level_1.
                                                                                            replace("ALL_REAC","").
                                                                                            replace("(other)","").
-                                                                                           replace(">"," ").strip())))
+                                                                                           replace(">"," ").
+                                                                                           replace(";","").strip())))
                     enzymes.append(MPNG_Enzyme(entry,names,sysname,enz_rxn_ids,substrates,products))
                 case 'Glycan':
                     test = 1
