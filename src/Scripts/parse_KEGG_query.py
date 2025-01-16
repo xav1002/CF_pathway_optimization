@@ -60,6 +60,7 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                     is_generic = False
                     BRITE_lvl = 0
                     BRITE_dict = {}
+                    DBLINKS_dict = {}
                     for line_level_1 in req_3:
                         line_level_1 = line_level_1.strip()
 
@@ -102,7 +103,7 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                         elif line_level_1.startswith("PATHWAY"):
                             category = ""
                         elif line_level_1.startswith("DBLINKS"):
-                            category = ""
+                            category = "DBLINKS"
                         elif line_level_1.startswith("NETWORK"):
                             category = ""
 
@@ -125,6 +126,9 @@ def parse_KEGG(query_items:list[str]) -> MPNG_Metabolite | MPNG_Reaction | MPNG_
                             elif category == "BRITE":
                                 BRITE_lvl += 1
                                 BRITE_dict[BRITE_lvl] = line_level_1.replace("BRITE","").strip()
+                            elif category == "DBLINKS":
+                                line_level_1 = line_level_1.replace("DBLINKS","").strip()
+                                DBLINKS_dict[line_level_1.split(":")[0]] = line_level_1.split(":")[1].strip()
                     metabolites.append(MPNG_Metabolite(entry,names,formula,MW,rxn_names,is_generic,BRITE_dict))
 
                 # MPNG_Reaction

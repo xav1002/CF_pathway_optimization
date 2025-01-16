@@ -11,6 +11,7 @@ from cobra import Metabolite
 
 from zeep import Client
 import hashlib
+import requests
 
 from MetabolicPathwayNetworkGraph import MetabolicPathwayNetworkGraph
 from MicrobialConsortiumKineticModel import MicrobialConsortiumKineticModel
@@ -27,39 +28,29 @@ class WholeCellConsortiumModel:
         self.__reactions: dict[str,MPNG_Reaction] = {}
         self.__enzymes: dict[str,MPNG_Enzyme] = {}
 
-        self.__reaction_metas_dict: dict[str,dict[str,list[str]]] = {}
         self.__db_excluded_metas: list[str] = ['h+','hydron']
+        self.__MPNG_Metabolite_to_CID = {}
+        self.__BRENDA_ligand_name_to_CID = {}
 
         with open('../Scripts/metabolites.json') as f:
             meta_data = json.load(f)
             for x in meta_data:
                 new_meta = MPNG_Metabolite.fromJSON(dict_from_json=json.loads(x))
                 self.__metabolites[new_meta.entry] = new_meta
-        with open('reactions.json') as f:
+        with open('../Scripts/reactions.json') as f:
             rxn_data = json.load(f)
             for x in rxn_data:
                 new_rxn = MPNG_Reaction.fromJSON(dict_from_json=json.loads(x))
                 stoich = new_rxn.stoich
                 meta_name_strs = {}
-                for key in list(stoich.keys()):
-                    try:
-                        if ')' not in key.id and 'G' not in key.id:
-                            metas_arr = [w for w in list(map(lambda v: re.replace('-','',re.replace(' ','',v)),
-                                                             list(filter(lambda y: all([z not in y for z in self.__db_excluded_metas]),
-                                                                         [x.lower() for x in self.__metabolites[key.id].names]
-                                                                    ))
-                                                                )) if w is not []]
-                            if len(metas_arr) > 0:
-                                meta_name_strs[key.id] = metas_arr
-                    except Exception as e:
-                        print(e)
-                self.__reaction_metas_dict[new_rxn.entry] = meta_name_strs
                 self.__reactions[new_rxn.entry] = new_rxn
-        with open('enzymes.json') as f:
+        with open('../Scripts/enzymes.json') as f:
             enz_data = json.load(f)
             for x in enz_data:
                 new_enz = MPNG_Enzyme.fromJSON(dict_from_json=json.loads(x))
                 self.__enzymes[new_enz.entry] = new_enz
+        with open('../Scripts/KEGG_CIDs.json') as f:
+            self.__MPNG_Metabolite_to_CID = json.load(f)
         print('number of metabolites: ',len(list(self.__metabolites.keys())))
         print('number of reactions: ',len(list(self.__reactions.keys())))
 
@@ -184,11 +175,11 @@ class WholeCellConsortiumModel:
                 )
 
     def identify_generic_compounds(self) -> pd.DataFrame:
-        generic_metas = pd.DataFrame([])
+        generic_metas = pd.DataFrame([],columns=['entry','names'])
         for idx,meta in enumerate(list(self.__metabolites.values())):
             if meta.generic:
-                generic_metas.loc[idx] = [meta.entry,meta.names[0]]
-        print(generic_metas.to_markdown())
+                generic_metas.loc[idx] = [meta.entry,meta.names]
+        # print(generic_metas.to_markdown())
         return self.generic_compound_assignments
 
     def generate_generic_rxns(self) -> None:
@@ -214,26 +205,38 @@ class WholeCellConsortiumModel:
         return
 
     def match_KEGG_compounds_to_BRENDA(self) -> None:
-        # 1. find CID for each KEGG compound from SID in KEGG entry
+        # 1. find CID for each KEGG compound from name in KEGG entry
         # 1.1. if no PubChem SID in KEGG entry, try CAS number, if no CAS, then need to use CheBI
+        for idx,meta in enumerate(list(self.__metabolites.values())):
+            try:
+                raw_req = requests.get('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/'+meta.names[0]+'/cids/JSON').text
+                parsed_req = json.loads(raw_req)
+                print('parsed_req',idx,parsed_req,meta.names[0])
+                self.__MPNG_Metabolite_to_CID[meta.entry] = parsed_req['IdentifierList']['CID']
+            except Exception as e:
+                print('CID not found',e)
+        print('MPNG_Metabolite_to_CID',self.__MPNG_Metabolite_to_CID)
 
-        # 2. find CID for each compound from name from BRENDA
-
+        with open('KEGG_CIDs.json', 'w', encoding='utf-8') as f:
+            json.dump(self.__MPNG_Metabolite_to_CID, f, ensure_ascii=False, indent=4)
 
         # NOTE: approach to accumulating the relationships between KEGG and BRENDA compounds/ligands:
         # go through all enzymes, build dict mapping compounds/ligands to their CIDs, save these dicts for later usage
         # for now, ignore generic ligands in BRENDA, assume reversibility
         # NOTE: approach for incorporating generic reaction compounds:
         # make the reversibility the same as the reversibility of a specific compound with respect to a given enzymatic reaction
-        return
 
     def set_reaction_reversibility(self) -> None:
+        # generating dict mapping MPNG_Metabolites to CID
+        # self.match_KEGG_compounds_to_BRENDA()
+
+
         # checking whether each enzyme is reversible
         wsdl = "https://www.brenda-enzymes.org/soap/brenda_zeep.wsdl"
         password = hashlib.sha256("b3br?B$iDjpeJm77".encode("utf-8")).hexdigest()
         client = Client(wsdl)
         # for enz in list(map(lambda x: x.entry, list(self.__enzymes.values()))):
-        for enz in ['1.1.1.1']:
+        for enz in ['3.1.1.1']:
             # logic:
             # 1. for each reaction that each enzyme catalyzes, are they reversible?
             #   1.a. Track this in MPNG_Reaction
@@ -252,16 +255,8 @@ class WholeCellConsortiumModel:
                 params_rev = ("v.a.xu@wustl.edu",password,f"ecNumber*{enz}", "organism*", "naturalSubstrates*", "organismNaturalSubstrates*", "commentaryNaturalSubstrates*", "naturalProducts*", "commentaryNaturalProducts*", "organismNaturalProducts*", "reversibility*")
                 res_rev = client.service.getNaturalSubstratesProducts(*params_rev)
                 reversibility = [x['reversibility'] for x in res_rev]
-                nat_rxn_partners_from_res_rev = {}
-                for idx,res_item in enumerate(res_rev):
-                    nat_subs = sorted([x for x in res_item['naturalSubstrates'].split(' + ') if ' H+' not in x and x != 'H+'])
-                    nat_prods = sorted([x for x in res_item['naturalProducts'].split(' + ') if ' H+' not in x and x != 'H+'])
-                    key = '_'.join(nat_subs)+'='+'_'.join(nat_prods)
-                    if '?' not in key:
-                        nat_rxn_partners_from_res_rev[key] = reversibility[idx]
-                # print('nat_rxn_part_res_rev',nat_rxn_partners_from_res_rev)
+                print('reversibility',reversibility)
 
-                # create dict[natRxnPartners,list[naturalSubstrate:str]]
                 natRxnSubs = {}
                 for idx,partner in enumerate(natRxnPartners):
                     if partner not in list(natRxnSubs.keys()):
@@ -276,13 +271,12 @@ class WholeCellConsortiumModel:
                     key_2 = re.split('_',key)[0]
                     if key_2 not in list(natRxnSubs2.keys()):
                         natRxnSubs2[key_2] = []
-                    natRxnSubs2[key_2] += [x for x in natRxnSubs[key] if ' H+' not in x and x != 'H+']
-                # print('natRxnSubs2',natRxnSubs2)
+                    natRxnSubs2[key_2] += [x.lower() for x in natRxnSubs[key] if ' H+' not in x and x != 'H+']
                 # combining foward and reverse reaction partners
                 natRxnSubs3 = {}
                 for key_2 in list(natRxnSubs2.keys()):
-                    split_list = [y.split(' + ') for y in [x for x in re.split(' = ',key_2)]]
-                    replaced_list = [sorted([x for x in split_list[0] if ' H+' not in x and x != 'H+']),sorted([x for x in split_list[1] if ' H+' not in x and x != 'H+'])]
+                    split_list = [y.split(' + ') for y in [x.lower() for x in re.split(' = ',key_2)]]
+                    replaced_list = [sorted([x.lower() for x in split_list[0] if ' H+' not in x and x != 'H+']),sorted([x.lower() for x in split_list[1] if ' H+' not in x and x != 'H+'])]
                     sorted_list = ['_'.join(x) for x in replaced_list]
                     key_3 = sorted_list[0]+'='+sorted_list[1]
                     if '?' not in key_3 and key_3 not in list(natRxnSubs3.keys()):
@@ -294,78 +288,159 @@ class WholeCellConsortiumModel:
                     natRxnSubs3[key_3] = list(set(natRxnSubs3[key_3]))
                 print('natRxnSubs3',natRxnSubs3)
 
+                ### STARTHERE: need to account for specific reactions listed in BRENDA but not in KEGG
+                ### need to figure out how to get the generic reactions to work
+                natRxnSubs3_CIDs = {}
+                for key_3 in list(natRxnSubs3.keys()):
+                    split_list = [y.split('_') for y in [x for x in re.split('=',key_3)]]
+                    meta_names = [x.lower() for x in split_list[0]+split_list[1]]
+                    for meta_name in meta_names:
+                        if not meta_name in list(self.__BRENDA_ligand_name_to_CID.keys()):
+                            try:
+                                print('meta_name',meta_name)
+                                split_meta_name = re.split(' ',meta_name)
+                                if split_meta_name[0].isdigit():
+                                    meta_name = split_meta_name[0]
+                                CID_req_raw = requests.get('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/'+meta_name+'/cids/JSON').text
+                                parsed_CID_req = json.loads(CID_req_raw)
+                                print('parsed_CID_req',parsed_CID_req)
+                                CID_from_BRENDA = parsed_CID_req['IdentifierList']['CID']
+                                self.__BRENDA_ligand_name_to_CID[meta_name] = CID_from_BRENDA
+                            except Exception as e:
+                                print('could not query correctly',e)
+
+                    key_CIDs = ''
+                    print('meta_names',meta_names)
+                    for name in meta_names:
+                        print('key_CIDs',key_CIDs)
+                        try:
+                            if key_CIDs == '':
+                                underscore = ''
+                            else:
+                                underscore = '_'
+
+                            if type(name) == str:
+                                key_CIDs += underscore+str(self.__BRENDA_ligand_name_to_CID[name])
+                            else:
+                                for name_item in name:
+                                    if key_CIDs == '':
+                                        underscore = ''
+                                    else:
+                                        underscore = '_'
+                                    key_CIDs += underscore+str(name_item)
+                        except Exception as e:
+                            print('meta not found in PubChem',e)
+
+                    val_CIDs = []
+                    val_meta_names = natRxnSubs3[key_3]
+                    print('key_CIDs',key_CIDs)
+                    print('test2',self.__BRENDA_ligand_name_to_CID)
+                    print('test3',natRxnSubs3_CIDs)
+                    for val_meta_name in val_meta_names:
+                        try:
+                            val_CIDs += self.__BRENDA_ligand_name_to_CID[val_meta_name]
+                        except Exception as e:
+                            print('meta not found',e)
+                    natRxnSubs3_CIDs[key_CIDs] = val_CIDs
+
+                nat_rxn_partners_from_res_rev = {}
+                for idx,res_item in enumerate(res_rev):
+                    try:
+                        nat_subs = sorted([x.lower() for x in res_item['naturalSubstrates'].split(' + ') if ' H+' not in x and x != 'H+'])
+                        nat_prods = sorted([x.lower() for x in res_item['naturalProducts'].split(' + ') if ' H+' not in x and x != 'H+'])
+                        # key = '_'.join(nat_subs)+'='+'_'.join(nat_prods)
+                        print('nat_subs',nat_subs,nat_prods)
+                        meta_names = nat_subs+nat_prods
+                        key = ''
+                        for meta_name in meta_names:
+                            if key == '':
+                                underscore = ''
+                            else:
+                                underscore = '_'
+                            key += underscore+str(self.__BRENDA_ligand_name_to_CID[meta_name])
+                        if '?' not in key:
+                            if key not in list(nat_rxn_partners_from_res_rev.keys()):
+                                nat_rxn_partners_from_res_rev[key] = []
+                            nat_rxn_partners_from_res_rev[key].append(reversibility[idx])
+                            print('nat_rxn_partners_5',nat_rxn_partners_from_res_rev)
+                    except Exception as e:
+                        print('metabolite not found in BRENDA',e)
+
+                for key in list(nat_rxn_partners_from_res_rev.keys()):
+                    if 'r' in nat_rxn_partners_from_res_rev[key]:
+                        nat_rxn_partners_from_res_rev[key] = 'r'
+                    else:
+                        nat_rxn_partners_from_res_rev[key] = 'ir'
+
                 # storing reversibility in each MPNG_Reaction
                 keys = [x.replace(';','') for x in self.__enzymes[enz].reactions]
                 rxn_reversible = {key:'both' for key in keys}
-                    # find MPNG_Reaction by checking if all metabolites are in the names of the metabolites in KEGG reaction
+                # find MPNG_Reaction by checking if all metabolites are in the names of the metabolites in KEGG reaction
                 for key_4 in self.__enzymes[enz].reactions:
+                    print('key_4',key_4)
                     key_4 = key_4.replace(';','')
                     if 'G' not in key_4 and '(' not in key_4:
-                        rxn_metas = list(self.__reaction_metas_dict[key_4].values())
+                        rxn_obj = self.__reactions[key_4]
+                        meta_entries = [x.id for x in list(rxn_obj.stoich.keys())]
+                        try:
+                            meta_CIDs = [self.__MPNG_Metabolite_to_CID[x][0] for x in meta_entries]
+                            print('meta_CIDs',meta_CIDs)
+                        except Exception as e:
+                            print('meta name is generic',e)
+                            continue
+                        meta_CIDs_str = ''
+                        for CID in meta_CIDs:
+                            if meta_CIDs_str == '':
+                                underscore = ''
+                            else:
+                                underscore = '_'
 
-                        subs_prod_rev = True
-                        for key_3 in list(natRxnSubs3.keys()):
-                            split_list = [y.split('_') for y in [x for x in re.split('=',key_3)]]
-                            meta_names = [x.lower() for x in split_list[0]+split_list[1]]
-                            meta_names_copy = copy.deepcopy(meta_names)
-                            rxn_metas_copy = copy.deepcopy(rxn_metas)
-                            print('meta_names',meta_names_copy,rxn_metas_copy)
-                            for meta_name in meta_names:
-                                # if [any([x in y for x in meta_name]) for y in rxn_metas]:
-                                for rxn_meta in rxn_metas:
-                                    print('test',rxn_meta,meta_name)
-                                    if meta_name in rxn_meta:
-                                        meta_names_copy.remove(meta_name)
-                                        rxn_metas_copy.remove(rxn_meta) 
-                                        print('removed',rxn_meta,meta_name,rxn_metas_copy,meta_names_copy)
+                            # if type(CID) == str:
+                            meta_CIDs_str += underscore+str([CID])
+                            # else:
+                            #     for CID_item in CID:
+                            #         if meta_CIDs_str == '':
+                            #             underscore = ''
+                            #         else:
+                            #             underscore = '_'
+                            #         meta_CIDs_str += underscore+str(CID_item)
 
-                            if len(rxn_metas_copy) == 0 and len(meta_names_copy) == 0:
-                                natRxnSubsCurr = natRxnSubs3[key_3]
-                                subs_prod_rev = nat_rxn_partners_from_res_rev[key_3] == 'r'
-                                print('natRxnSubsCurr',natRxnSubsCurr,subs_prod_rev)
-                                break
-
-                        if subs_prod_rev == False:
-                            subs_rev = []
-                            rxn_metas_dict = list(self.__reaction_metas_dict[key_4].values())
-                            for rxn_metas in rxn_metas_dict:
-                                subs_rev.append(any([x.lower() in rxn_metas for x in natRxnSubsCurr]))
-                                # print('subs_rev',subs_rev)
-                            tot_rev = all([x == True for x in subs_rev])
+                        print('test1241',natRxnSubs3_CIDs,meta_CIDs_str,meta_CIDs_str in list(natRxnSubs3_CIDs.keys()))
+                        if meta_CIDs_str in list(natRxnSubs3_CIDs.keys()):
+                            print('natRxnSubs3_CIDs',natRxnSubs3_CIDs[meta_CIDs_str])
+                            print('meta_CIDs',meta_CIDs)
+                            subs_rev = all([x in natRxnSubs3_CIDs[meta_CIDs_str] for x in meta_CIDs])
+                            print('nat_rxn_partners_from_res_rev',nat_rxn_partners_from_res_rev)
+                            subs_prod_rev = nat_rxn_partners_from_res_rev[meta_CIDs_str] == 'r'
+                            print('subs_prod_rev',subs_rev,subs_prod_rev)
+                            tot_rev = subs_rev or subs_prod_rev
                         else:
                             tot_rev = True
-                        print('tot_rev',key_4,tot_rev,subs_prod_rev)
+
+                        print('tot_rev',key_4,tot_rev)
 
                         if tot_rev:
                             rxn_reversible[key_4] = 'both'
                         else:
                             stoich = self.__reactions[key_4].stoich
-                            subs_strs = []
-                            prod_strs = []
+                            subs_CIDs = []
+                            prod_CIDs = []
                             for meta in list(stoich.keys()):
                                 try:
+                                    print('test6',self.__metabolites[meta.id].names)
                                     if stoich[meta] < 0:
-                                        subs_strs.append([x.lower() for x in self.__metabolites[meta.id].names])
+                                        subs_CIDs += self.__MPNG_Metabolite_to_CID[meta.id]
                                     else:
-                                        prod_strs.append([x.lower() for x in self.__metabolites[meta.id].names])
+                                        prod_CIDs += self.__MPNG_Metabolite_to_CID[meta.id]
                                 except Exception as e:
                                     print('metabolite not in system',e)
 
-                            print('natRxnSubsCurr2',natRxnSubsCurr,subs_strs)
+                            print('subs_CIDs',subs_CIDs)
 
-                            natRxnSubsCurr_copy = copy.deepcopy(natRxnSubsCurr)
-                            subs_strs_copy = copy.deepcopy(subs_strs)
-                            print('copies',natRxnSubsCurr_copy,subs_strs_copy,natRxnSubsCurr_copy[0] in subs_strs_copy[0], natRxnSubsCurr[0] in subs_strs[0], natRxnSubsCurr_copy[0], subs_strs_copy[0], natRxnSubsCurr[0], subs_strs[0])
-                            for natRxnSub in natRxnSubsCurr:
-                                # if [any([x in y for x in meta_name]) for y in rxn_metas]:
-                                for subs_str in subs_strs:
-                                    print('test',natRxnSub,subs_str,natRxnSub in subs_str)
-                                    if natRxnSub in subs_str:
-                                        natRxnSubsCurr_copy.remove(natRxnSub)
-                                        subs_strs_copy.remove(subs_str)
-                                        print('removed 2',natRxnSubsCurr_copy,subs_strs_copy)
-
-                            if len(natRxnSubsCurr_copy) == 0 and len(subs_strs_copy) == 0:
+                            print('natRxnSubs3_CIDs',natRxnSubs3_CIDs[meta_CIDs_str])
+                            # flat_natRxnSubs3_CIDs = [x for y in natRxnSubs3_CIDs[meta_CIDs_str] for x in y]
+                            print('test0',natRxnSubs3_CIDs[meta_CIDs_str])
+                            if all([x in subs_CIDs for x in natRxnSubs3_CIDs[meta_CIDs_str]]):
                                 rxn_reversible[key_4] = 'forward'
                             else:
                                 rxn_reversible[key_4] = 'backward'
@@ -380,8 +455,9 @@ class WholeCellConsortiumModel:
             # except Exception as e:
             #     print('enzyme '+enz+' did not work',e)
 
-        # with open('reactions.json', 'w', encoding='utf-8') as f:
-        #     json.dump(list(map(lambda x: x.toJSON(),list(self.__reactions.values()))), f, ensure_ascii=False, indent=4)
+        print('updating reactions.json')
+        with open('reactions.json', 'w', encoding='utf-8') as f:
+            json.dump(list(map(lambda x: x.toJSON(),list(self.__reactions.values()))), f, ensure_ascii=False, indent=4)
 
     def generate_whole_network(self,network_name:str) -> MetabolicPathwayNetworkGraph:
         # Task 1: construct metabolic network connections

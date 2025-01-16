@@ -225,7 +225,7 @@ class MetabolicPathwayNetworkGraph:
         # add MPNG_Reaction to MPNG
         new_reaction.check_reversibility_local()
         self.reactions = new_reaction
-        print('add_reaction',new_reaction.enzyme_id)
+        # print('add_reaction',new_reaction.enzyme_id)
         # rxn_number = new_reaction.enzyme_id[0]+':'+new_reaction.entry+'_'+str(len(self.__reactions.keys()))
         # add to NX Graph
         self.__vis_Graph.add_node(node_for_adding=new_reaction.entry,id=len(self.__vis_Graph.nodes))
