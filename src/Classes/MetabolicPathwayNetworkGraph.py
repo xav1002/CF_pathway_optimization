@@ -223,7 +223,6 @@ class MetabolicPathwayNetworkGraph:
 
     def add_reaction(self,new_reaction:MPNG_Reaction,new_metabolites:list[MPNG_Metabolite]) -> None:
         # add MPNG_Reaction to MPNG
-        new_reaction.check_reversibility_local()
         self.reactions = new_reaction
         # print('add_reaction',new_reaction.enzyme_id)
         # rxn_number = new_reaction.enzyme_id[0]+':'+new_reaction.entry+'_'+str(len(self.__reactions.keys()))
@@ -341,7 +340,7 @@ class MetabolicPathwayNetworkGraph:
 
             # Shutting down reverse reactions that are infeasible according to BRENDA
             for rxn in [x for x in mdl.reactions if x not in mdl.boundary]:
-                print('test',self.__reactions[rxn.id].forward_valid,self.__reactions[rxn.id].backward_valid)
+                print('test',rxn.id,self.__reactions[rxn.id].forward_valid,self.__reactions[rxn.id].backward_valid)
                 if self.__reactions[rxn.id].forward_valid:
                     mdl.reactions.get_by_id(rxn.id).upper_bound = 1000
                 else: mdl.reactions.get_by_id(rxn.id).upper_bound = 0
@@ -387,7 +386,7 @@ class MetabolicPathwayNetworkGraph:
             # 2.4 Create optimization objective for number of total sum of flux absolute values
             tot_flux_vars = []
             tot_flux_consts = []
-            for rxn in mdl.reactions:
+            for rxn in [x for x in mdl.reactions if x.id not in list(map(lambda y: 'SK_'+y,self.__small_gas_metas))]:
                 new_var = mdl.problem.Variable('rxn_var_'+rxn.id)
                 new_constraint = mdl.problem.Constraint(rxn.forward_variable + rxn.reverse_variable - new_var,
                                         name='rxn_constraint_'+rxn.id,

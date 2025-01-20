@@ -19,12 +19,12 @@ class MPNG_Reaction:
 
     # Enzyme
 
-    def __init__(self,entry:str,names:list[str],definition:str,equation:str,enzyme_id:list[str],forward_valid:bool,backward_valid:bool) -> None:
+    def __init__(self,entry:str,names:list[str],definition:str,equation:str,enzyme_id:dict,forward_valid:bool,backward_valid:bool) -> None:
         self.__entry = entry
         self.__names = names
         self.__definition = definition
         self.__equation = equation
-        self.__enzyme_id = {x:'both' for x in enzyme_id}
+        self.__enzyme_id = enzyme_id
 
         # self.__reversible = True
         self.__forward_valid = forward_valid
@@ -104,6 +104,7 @@ class MPNG_Reaction:
             self.__backward_valid = True
 
     def check_reversibility_local(self) -> None:
+        print('check_rev_local',self.__enzyme_id)
         if 'forward' in list(self.__enzyme_id.values()):
             self.__forward_valid = True
         else: self.__forward_valid = False
