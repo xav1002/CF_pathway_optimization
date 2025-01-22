@@ -1,0 +1,11 @@
+import sys
+sys.path.append('../Classes')
+sys.path.append('../Classes/Components')
+sys.path.append('../../Lib/site-packages')
+
+from WholeCellConsortiumModel import WholeCellConsortiumModel
+
+wccm = WholeCellConsortiumModel()
+wccm.generate_whole_network('test')
+test_graph_2 = wccm.seek_optimal_network('test',['C00048'],['C00469','C00011'],2,2)
+wccm.visualize_graph('test')
