@@ -338,6 +338,10 @@ class MetabolicPathwayNetworkGraph:
                 # only prevents intake of non-substrate metabolites, doesn't prevent production of other metabolites
                 mdl.reactions.get_by_id(rxn.id).upper_bound = 0
 
+            for rxn in [x for x in mdl.boundary if re.split('_',x.id)[1] in self.__small_gas_metas]:
+                mdl.reactions.get_by_id(rxn.id).lower_bound = -10000
+                mdl.reactions.get_by_id(rxn.id).upper_bound = 10000
+
             # Shutting down reverse reactions that are infeasible according to BRENDA
             for rxn in [x for x in mdl.reactions if x not in mdl.boundary]:
                 print('test',rxn.id,self.__reactions[rxn.id].forward_valid,self.__reactions[rxn.id].backward_valid)
@@ -414,7 +418,7 @@ class MetabolicPathwayNetworkGraph:
                     mdl.reactions.get_by_id(rxn.id).upper_bound = 0
 
             # 2.6 Restricting non-reversible reactions
-            # mdl.reactions.get_by_id('R00224').lower_bound = 0
+            # mdl.reactions.get_by_id('R00319').lower_bound = 0
             # mdl.reactions.get_by_id('R03145').lower_bound = 0
             # mdl.reactions.get_by_id('R11074').lower_bound = 0
 

@@ -236,7 +236,7 @@ class WholeCellConsortiumModel:
         password = hashlib.sha256("b3br?B$iDjpeJm77".encode("utf-8")).hexdigest()
         client = Client(wsdl)
         # for enz in list(map(lambda x: x.entry, list(self.__enzymes.values()))):
-        for enz in ['1.13.12.4']:
+        for enz in ['1.2.1.104']:
             # logic:
             # 1. for each reaction that each enzyme catalyzes, are they reversible?
             #   1.a. Track this in MPNG_Reaction
@@ -245,7 +245,7 @@ class WholeCellConsortiumModel:
             # NOTE: this extension will also consider generic reaction compounds. Certain versions of the enzymes can catalyze 
             # reactions to different levels of generalizability, meaning control over the reaction flux directions can be controlled 
             # by using specific enzymes from different organisms.
-            try:
+            # try:
                 print('starting enz: ',enz)
 
                 params_nat_sub = ("v.a.xu@wustl.edu",password,f"ecNumber*{enz}", "naturalSubstrate*", "naturalReactionPartners*", "organism*", "ligandStructureId*")
@@ -267,7 +267,7 @@ class WholeCellConsortiumModel:
                     time.sleep(1/3)
                     res_rev = client.service.getNaturalSubstratesProducts(*params_rev)
                 reversibility = [x['reversibility'] for x in res_rev]
-                # print('reversibility',reversibility)
+                print('reversibility',reversibility)
 
                 natRxnSubs = {}
                 for idx,partner in enumerate(natRxnPartners):
@@ -305,8 +305,9 @@ class WholeCellConsortiumModel:
                 natRxnSubs3_CIDs = {}
                 for key_3 in list(natRxnSubs3.keys()):
                     split_list = [y.split('_') for y in [x for x in re.split('=',key_3)]]
-                    meta_names = [re.split(' ',x)[1] if re.split(' ',x)[0].isdigit() else x for x in [x.lower() for x in split_list[0]+split_list[1]]]
-                    for meta_name in meta_names:
+                    sub_meta_names = [re.split(' ',x)[1] if re.split(' ',x)[0].isdigit() else x for x in [x.lower() for x in split_list[0]]]
+                    prod_meta_names = [re.split(' ',x)[1] if re.split(' ',x)[0].isdigit() else x for x in [x.lower() for x in split_list[1]]]
+                    for meta_name in sub_meta_names+prod_meta_names:
                         if not meta_name in list(self.__BRENDA_ligand_name_to_CID.keys()):
                             try:
                                 # print('meta_name',meta_name)
@@ -319,15 +320,27 @@ class WholeCellConsortiumModel:
                                 print('could not query correctly',e)
 
                     key_CIDs = ''
+                    sub_key_CID_arr = []
+                    prod_key_CID_arr = []
                     # print('meta_names',meta_names)
-                    for name in meta_names:
-                        # print('key_CIDs',key_CIDs)
+                    for idx,name in enumerate(sub_meta_names+prod_meta_names):
+                        try:
+                            if idx < len(sub_meta_names):
+                                sub_key_CID_arr.append(self.__BRENDA_ligand_name_to_CID[name])
+                            else:
+                                prod_key_CID_arr.append(self.__BRENDA_ligand_name_to_CID[name])
+                        except Exception as e:
+                            print('meta not found in PubChem',e)
+
+                    sub_key_CID_arr.sort()
+                    prod_key_CID_arr.sort()
+                    for CID in sub_key_CID_arr+prod_key_CID_arr:
                         try:
                             if key_CIDs == '':
                                 underscore = ''
                             else:
                                 underscore = '_'
-                            key_CIDs += underscore+str(self.__BRENDA_ligand_name_to_CID[name])
+                            key_CIDs += underscore+str(CID)
                         except Exception as e:
                             print('meta not found in PubChem',e)
 
@@ -350,21 +363,32 @@ class WholeCellConsortiumModel:
                     try:
                         nat_subs = sorted([x.lower() for x in res_item['naturalSubstrates'].split(' + ') if ' H+' not in x and x != 'H+'])
                         nat_prods = sorted([x.lower() for x in res_item['naturalProducts'].split(' + ') if ' H+' not in x and x != 'H+'])
-                        # print('nat_subs',nat_subs,nat_prods)
-                        meta_names = [re.split(' ',x)[1] if re.split(' ',x)[0].isdigit() else x for x in nat_subs+nat_prods]
-                        # print('meta_names_7',meta_names)
+                        print('nat_subs',nat_subs,nat_prods)
+                        sub_meta_names = [re.split(' ',x)[1] if re.split(' ',x)[0].isdigit() else x for x in nat_subs]
+                        prod_meta_names = [re.split(' ',x)[1] if re.split(' ',x)[0].isdigit() else x for x in nat_prods]
+
+
                         key = ''
-                        for meta_name in meta_names:
+                        sub_key_CID_arr = []
+                        prod_key_CID_arr = []
+                        for idx,meta_name in enumerate(sub_meta_names+prod_meta_names):
+                            if idx < len(sub_meta_names):
+                                sub_key_CID_arr.append(self.__BRENDA_ligand_name_to_CID[meta_name])
+                            else:
+                                prod_key_CID_arr.append(self.__BRENDA_ligand_name_to_CID[meta_name])
+                        sub_key_CID_arr.sort()
+                        prod_key_CID_arr.sort()
+                        for CID in sub_key_CID_arr+prod_key_CID_arr:
                             if key == '':
                                 underscore = ''
                             else:
                                 underscore = '_'
-                            key += underscore+str(self.__BRENDA_ligand_name_to_CID[meta_name])
+                            key += underscore+str(CID)
                         if '?' not in key:
                             if key not in list(nat_rxn_partners_from_res_rev.keys()):
                                 nat_rxn_partners_from_res_rev[key] = []
                             nat_rxn_partners_from_res_rev[key].append(reversibility[idx])
-                            # print('nat_rxn_partners_5',nat_rxn_partners_from_res_rev)
+                            print('nat_rxn_partners_5',nat_rxn_partners_from_res_rev)
                     except Exception as e:
                         # exc_type, exc_obj, exc_tb = sys.exc_info()
                         # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -386,36 +410,41 @@ class WholeCellConsortiumModel:
                     # print('key_4',key_4)
                     if 'G' not in key_4 and '(' not in key_4:
                         rxn_obj = self.__reactions[key_4]
-                        meta_entries = [x.id for x in list(rxn_obj.stoich.keys())]
+                        sub_meta_entries = [x.id for x in list(rxn_obj.stoich.keys()) if rxn_obj.stoich[x] < 0 and x.id != 'C00080']
+                        prod_meta_entries = [x.id for x in list(rxn_obj.stoich.keys()) if rxn_obj.stoich[x] > 0 and x.id != 'C00080']
+                        print('prod_meta_entries',prod_meta_entries)
                         try:
-                            meta_CIDs = [self.__MPNG_Metabolite_to_CID[x][0] for x in meta_entries]
+                            sub_meta_CIDs = [self.__MPNG_Metabolite_to_CID[x] for x in sub_meta_entries]
+                            prod_meta_CIDs = [self.__MPNG_Metabolite_to_CID[x] for x in prod_meta_entries]
+                            sub_meta_CIDs.sort()
+                            prod_meta_CIDs.sort()
+                            meta_CIDs = sub_meta_CIDs+prod_meta_CIDs
                             # print('meta_CIDs',meta_CIDs)
                         except Exception as e:
                             print('meta name is generic',e)
                             continue
                         meta_CIDs_str = ''
-                        for CID in meta_CIDs:
+                        for CID in sub_meta_CIDs+prod_meta_CIDs:
                             if meta_CIDs_str == '':
                                 underscore = ''
                             else:
                                 underscore = '_'
+                            meta_CIDs_str += underscore+str(CID)
 
-                            meta_CIDs_str += underscore+str([CID])
-
-                        # print('test1241',natRxnSubs3_CIDs,meta_CIDs_str,meta_CIDs_str in list(natRxnSubs3_CIDs.keys()))
+                        print('test1241',natRxnSubs3_CIDs,meta_CIDs_str,meta_CIDs_str in list(natRxnSubs3_CIDs.keys()))
                         try:
                             if meta_CIDs_str in list(natRxnSubs3_CIDs.keys()):
-                                # print('natRxnSubs3_CIDs',natRxnSubs3_CIDs[meta_CIDs_str])
-                                # print('meta_CIDs',meta_CIDs)
+                                print('natRxnSubs3_CIDs',natRxnSubs3_CIDs[meta_CIDs_str])
+                                print('meta_CIDs',meta_CIDs)
                                 subs_rev = all([x in natRxnSubs3_CIDs[meta_CIDs_str] for x in meta_CIDs])
-                                # print('nat_rxn_partners_from_res_rev',nat_rxn_partners_from_res_rev)
+                                print('nat_rxn_partners_from_res_rev',nat_rxn_partners_from_res_rev)
                                 subs_prod_rev = nat_rxn_partners_from_res_rev[meta_CIDs_str] == 'r'
-                                # print('subs_prod_rev',subs_rev,subs_prod_rev)
+                                print('subs_prod_rev',subs_rev,subs_prod_rev)
                                 tot_rev = subs_rev or subs_prod_rev
                             else:
                                 tot_rev = True
 
-                            # print('tot_rev',key_4,tot_rev)
+                            print('tot_rev',key_4,tot_rev)
 
                             if tot_rev:
                                 rxn_reversible[key_4] = 'both'
@@ -452,8 +481,8 @@ class WholeCellConsortiumModel:
                     if 'G' not in key_4 and '(' not in key_4:
                         self.__reactions[rxn_entry].check_reversibility(enz,rxn_reversible)
 
-            except Exception as e:
-                print('enzyme '+enz+' did not work',e)
+            # except Exception as e:
+            #     print('enzyme '+enz+' did not work',e)
 
         print('updating reactions.json')
         with open('reactions.json', 'w', encoding='utf-8') as f:
@@ -516,10 +545,21 @@ class WholeCellConsortiumModel:
                 if len([rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id]) == 0:
                     continue
                 rxn = [rxn for rxn in MPNG_net.get_reactions('all') if rxn.entry == co_rxn.id][0]
-                if rxn.entry+'_'+list(rxn.enzyme_id.keys())[0] in MPNG_net.vis_Network.get_nodes():
-                    MPNG_net.vis_Network.get_node(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0])['label'] = MPNG_net.vis_Network.get_node(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0])['label']+str('; enz_f: '+str(round(abs(flux_val))))
+                if flux_val < 0:
+                    for key in list(rxn.enzyme_id.keys()):
+                        if rxn.enzyme_id[key] == 'backward' or rxn.enzyme_id[key] == 'both':
+                            curr_enz_id = key
+                            break
                 else:
-                    MPNG_net.vis_Network.add_node(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],rxn.entry+'_'+list(rxn.enzyme_id.keys())[0]+'; enz_f: '+str(round(abs(flux_val))),shape='box')
+                    for key in list(rxn.enzyme_id.keys()):
+                        if rxn.enzyme_id[key] == 'forward' or rxn.enzyme_id[key] == 'both':
+                            curr_enz_id = key
+                            break
+
+                if rxn.entry+'_'+curr_enz_id in MPNG_net.vis_Network.get_nodes():
+                    MPNG_net.vis_Network.get_node(rxn.entry+'_'+curr_enz_id)['label'] = MPNG_net.vis_Network.get_node(rxn.entry+'_'+curr_enz_id)['label']+str('; enz_f: '+str(round(abs(flux_val))))
+                else:
+                    MPNG_net.vis_Network.add_node(rxn.entry+'_'+curr_enz_id,rxn.entry+'_'+curr_enz_id+'; enz_f: '+str(round(abs(flux_val))),shape='box')
                 for meta in list(co_rxn.metabolites.keys()):
                     if meta.id in self.common_metabolites:
                         MPNG_net.vis_Network.add_node(meta.id+'_'+str(idx),[metabolite.names[0] for metabolite in MPNG_net.get_metabolites('all') if metabolite.entry == meta.id][0],shape='image',image='https://rest.kegg.jp/get/'+meta.id+'/image')
@@ -533,15 +573,15 @@ class WholeCellConsortiumModel:
                         if co_rxn.metabolites[meta] < 0:
                             arrow_dir = 'to' if round(flux_val) > 0 else 'from'
                             if meta.id in self.common_metabolites:
-                                MPNG_net.vis_Network.add_edge(meta.id+'_'+str(idx),rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                                MPNG_net.vis_Network.add_edge(meta.id+'_'+str(idx),rxn.entry+'_'+curr_enz_id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
                             else:
-                                MPNG_net.vis_Network.add_edge(meta.id,rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                                MPNG_net.vis_Network.add_edge(meta.id,rxn.entry+'_'+curr_enz_id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
                         elif co_rxn.metabolites[meta] > 0:
                             arrow_dir = 'to' if round(flux_val) > 0 else 'from'
                             if meta.id in self.common_metabolites:
-                                MPNG_net.vis_Network.add_edge(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
+                                MPNG_net.vis_Network.add_edge(rxn.entry+'_'+curr_enz_id,meta.id+'_'+str(idx),label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,color='red')
                             else:
-                                MPNG_net.vis_Network.add_edge(rxn.entry+'_'+list(rxn.enzyme_id.keys())[0],meta.id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
+                                MPNG_net.vis_Network.add_edge(rxn.entry+'_'+curr_enz_id,meta.id,label='rxn_f: '+str(int(abs(co_rxn.metabolites[meta]*flux_val))),arrows=arrow_dir,width=3)
                     except Exception as e:
                         print('Glycan edge in model, no name.',e)
 

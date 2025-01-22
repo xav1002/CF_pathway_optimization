@@ -4,12 +4,12 @@
 
 {%- block header -%}
 <!DOCTYPE html>
-<html>
+<html lang="{{ resources.language_code }}">
 <head>
 {%- block html_head -%}
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-{% set nb_title = nb.metadata.get('title', '') or resources['metadata']['name'] %}
+{% set nb_title = nb.metadata.get('title', resources['metadata']['name']) | escape_html_keep_quotes %}
 <title>{{nb_title}}</title>
 
 {%- block html_head_js -%}
@@ -19,6 +19,12 @@
 {%- block html_head_js_requirejs -%}
 <script src="{{ resources.require_js_url }}"></script>
 {%- endblock html_head_js_requirejs -%}
+{%- block html_head_js_mermaidjs -%}
+<script type="module">
+  import mermaid from '{{ resources.mermaid_js_url }}';
+  mermaid.initialize({ startOnLoad: true });
+</script>
+{%- endblock html_head_js_mermaidjs -%}
 {%- endblock html_head_js -%}
 
 {% block jupyter_widgets %}
@@ -86,13 +92,15 @@ div#notebook-container{
 
 {% block body_header %}
 <body>
-  <div tabindex="-1" id="notebook" class="border-box-sizing">
-    <div class="container" id="notebook-container">
+  <main>
+    <div tabindex="-1" id="notebook" class="border-box-sizing">
+      <div class="container" id="notebook-container">
 {% endblock body_header %}
 
 {% block body_footer %}
+      </div>
     </div>
-  </div>
+  </main>
 </body>
 {% endblock body_footer %}
 
@@ -102,4 +110,3 @@ div#notebook-container{
 {{ super() }}
 </html>
 {% endblock footer %}
-
