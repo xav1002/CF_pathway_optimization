@@ -1,0 +1,13 @@
+cobra==0.29.1
+equilibrator_api==0.6.0
+networkx==3.3
+numpy==2.2.2
+optlang==1.8.2
+pandas==2.2.3
+periodictable==1.7.1
+pyvis==0.3.2
+pywin32==306
+Requests==2.32.3
+scipy==1.14.1
+sympy==1.13.3
+zeep==4.3.1
