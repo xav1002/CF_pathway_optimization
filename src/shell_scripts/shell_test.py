@@ -1,7 +1,7 @@
 import sys
-sys.path.append('../Classes')
-sys.path.append('../Classes/Components')
-sys.path.append('../../Lib/site-packages')
+sys.path.append('src\Classes')
+sys.path.append('src\Classes\Components')
+sys.path.append('Lib\site-packages')
 
 from WholeCellConsortiumModel import WholeCellConsortiumModel
 
