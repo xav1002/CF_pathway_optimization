@@ -1,7 +1,3 @@
-import sys
-sys.path.insert(0, '.\\Components')
-sys.path.insert(0, '..\\..\\Lib\\site-packages')
-
 import numpy as np
 import pandas as pd
 from scipy import optimize as opt

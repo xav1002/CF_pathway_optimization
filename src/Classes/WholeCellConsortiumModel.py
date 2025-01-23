@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, '.\\Components')
-sys.path.insert(0, '..\\..\\Lib\\site-packages')
 from pyvis.network import Network
 import networkx as nx
 import json
