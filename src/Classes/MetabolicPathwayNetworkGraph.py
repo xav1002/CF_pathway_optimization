@@ -1,8 +1,6 @@
 import sys
-import sys
-sys.path.append('../Classes')
-sys.path.append('../Classes/Components')
-sys.path.append('../../Lib')
+sys.path.insert(0, '.\\Components')
+sys.path.insert(0, '..\\..\\Lib\\site-packages')
 
 import numpy as np
 import pandas as pd
@@ -344,7 +342,7 @@ class MetabolicPathwayNetworkGraph:
 
             # Shutting down reverse reactions that are infeasible according to BRENDA
             for rxn in [x for x in mdl.reactions if x not in mdl.boundary]:
-                print('test',rxn.id,self.__reactions[rxn.id].forward_valid,self.__reactions[rxn.id].backward_valid)
+                # print('test',rxn.id,self.__reactions[rxn.id].forward_valid,self.__reactions[rxn.id].backward_valid)
                 if self.__reactions[rxn.id].forward_valid:
                     mdl.reactions.get_by_id(rxn.id).upper_bound = 1000
                 else: mdl.reactions.get_by_id(rxn.id).upper_bound = 0
@@ -520,6 +518,7 @@ class MetabolicPathwayNetworkGraph:
                 except Exception as e:
                     pass
 
+            # 3.4 setting target metabolite flux optimization
             rxn: Reaction = mdl.reactions.get_by_id('SK_'+objective_meta_entry)
             obj_dict[rxn.forward_variable] = len(list(dGr_dict.keys()))
             obj_dict[rxn.reverse_variable] = -len(list(dGr_dict.keys()))
@@ -557,12 +556,12 @@ class MetabolicPathwayNetworkGraph:
                 if target_meta in prods or target_meta in subs:
                     direct_target_prod_rxns[rxn] = int_fluxes_lvl_1[rxn.id]
 
-            print('test3',list(direct_target_prod_rxns.values()))
-            max_direct_target_prod_flux = max(list(direct_target_prod_rxns.values()))
-            for rxn in list(direct_target_prod_rxns.keys()):
-                if direct_target_prod_rxns[rxn] < max_direct_target_prod_flux:
-                    mdl.reactions.get_by_id(rxn.id).upper_bound = 0
-                    mdl.reactions.get_by_id(rxn.id).lower_bound = 0
+            # print('test3',list(direct_target_prod_rxns.values()))
+            # max_direct_target_prod_flux = max(list(direct_target_prod_rxns.values()))
+            # for rxn in list(direct_target_prod_rxns.keys()):
+            #     if direct_target_prod_rxns[rxn] < max_direct_target_prod_flux:
+            #         mdl.reactions.get_by_id(rxn.id).upper_bound = 0
+            #         mdl.reactions.get_by_id(rxn.id).lower_bound = 0
 
             # 3.7 Shutting down fluxes that produce substrate metabolites
             # substrate_metas = [mdl.metabolites.get_by_id(x) for x in substrate_meta_entries]
@@ -629,8 +628,6 @@ class MetabolicPathwayNetworkGraph:
                 print('number of boundary rxns used (lvl_3): ',(round(bnd_fluxes_lvl_3)!=0).sum())
                 print('int_fluxes (lvl_3): ',rel_int_fluxes_lvl_3.to_markdown())
                 print('bnd_fluxes (lvl_3): ',rel_bnd_fluxes_lvl_3.to_markdown())
-
-            
 
         # Compare balanced networks that get to target metabolite from each given substrate, try to consolidate into most efficient 
         # pathway that uses some combination of all of the substrate metabolites
