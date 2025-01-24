@@ -234,7 +234,7 @@ class WholeCellConsortiumModel:
         password = hashlib.sha256("b3br?B$iDjpeJm77".encode("utf-8")).hexdigest()
         client = Client(wsdl)
         # for enz in list(map(lambda x: x.entry, list(self.__enzymes.values()))):
-        for enz in ['1.2.1.104']:
+        for enz in ['4.1.2.36']:
             # logic:
             # 1. for each reaction that each enzyme catalyzes, are they reversible?
             #   1.a. Track this in MPNG_Reaction
