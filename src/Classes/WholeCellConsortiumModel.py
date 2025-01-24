@@ -411,8 +411,9 @@ class WholeCellConsortiumModel:
                         rxn_obj = self.__reactions[key_4]
                         sub_meta_entries = [x.id for x in list(rxn_obj.stoich.keys()) if rxn_obj.stoich[x] < 0 and x.id != 'C00080']
                         prod_meta_entries = [x.id for x in list(rxn_obj.stoich.keys()) if rxn_obj.stoich[x] > 0 and x.id != 'C00080']
-                        print('prod_meta_entries',prod_meta_entries)
+                        print('prod_meta_entries',prod_meta_entries,sub_meta_entries)
                         try:
+                            print('slef',self.__MPNG_Metabolite_to_CID)
                             sub_meta_CIDs = [self.__MPNG_Metabolite_to_CID[x] for x in sub_meta_entries]
                             prod_meta_CIDs = [self.__MPNG_Metabolite_to_CID[x] for x in prod_meta_entries]
                             sub_meta_CIDs.sort()
