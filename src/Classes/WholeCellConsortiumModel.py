@@ -365,12 +365,11 @@ class WholeCellConsortiumModel:
                         sub_meta_names = [re.split(' ',x)[1] if re.split(' ',x)[0].isdigit() else x for x in nat_subs]
                         prod_meta_names = [re.split(' ',x)[1] if re.split(' ',x)[0].isdigit() else x for x in nat_prods]
 
-
                         key = ''
                         sub_key_CID_arr = []
                         prod_key_CID_arr = []
-                        for idx,meta_name in enumerate(sub_meta_names+prod_meta_names):
-                            if idx < len(sub_meta_names):
+                        for idx_2,meta_name in enumerate(sub_meta_names+prod_meta_names):
+                            if idx_2 < len(sub_meta_names):
                                 sub_key_CID_arr.append(self.__BRENDA_ligand_name_to_CID[meta_name])
                             else:
                                 prod_key_CID_arr.append(self.__BRENDA_ligand_name_to_CID[meta_name])
@@ -383,6 +382,7 @@ class WholeCellConsortiumModel:
                                 underscore = '_'
                             key += underscore+str(CID)
                         if '?' not in key:
+                            print('ttest5',key,idx,reversibility)
                             if key not in list(nat_rxn_partners_from_res_rev.keys()):
                                 nat_rxn_partners_from_res_rev[key] = []
                             nat_rxn_partners_from_res_rev[key].append(reversibility[idx])
@@ -398,6 +398,7 @@ class WholeCellConsortiumModel:
                         nat_rxn_partners_from_res_rev[key] = 'r'
                     else:
                         nat_rxn_partners_from_res_rev[key] = 'ir'
+                print('test65',nat_rxn_partners_from_res_rev)
 
                 # storing reversibility in each MPNG_Reaction
                 keys = [x.replace(';','') for x in self.__enzymes[enz].reactions]
