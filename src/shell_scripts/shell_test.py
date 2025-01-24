@@ -6,7 +6,7 @@ sys.path.insert(0, '..\\Classes\\MicorbialConsortiumKineticModel')
 sys.path.insert(0, '..\\Classes\\Components')
 sys.path.insert(0, '..\\..\\Lib\\site-packages')
 
-from WholeCellConsortiumModel import WholeCellConsortiumModel
+from WholeCellConsortiumModel.WholeCellConsortiumModel import WholeCellConsortiumModel
 
 wccm = WholeCellConsortiumModel()
 wccm.generate_whole_network('test')
